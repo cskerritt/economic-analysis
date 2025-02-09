@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Annual Earnings Factor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Annual Earnings Factor Calculator</h1>
+        <p class="lead">Calculate the Annual Earnings Factor (AEF) with all components.</p>
+        
+        <form method="POST">
+            <div class="mb-3">
+                <label for="gross_earnings_base" class="form-label">Gross Earnings Base</label>
+                <input type="number" step="0.01" class="form-control" id="gross_earnings_base" 
+                       name="gross_earnings_base" value="{{ evaluee.gross_earnings_base or '' }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="worklife_adjustment" class="form-label">Worklife Adjustment</label>
+                <input type="number" step="0.0001" class="form-control" id="worklife_adjustment" 
+                       name="worklife_adjustment" value="{{ evaluee.worklife_adjustment or '' }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="unemployment_factor" class="form-label">Unemployment Factor</label>
+                <input type="number" step="0.0001" class="form-control" id="unemployment_factor" 
+                       name="unemployment_factor" value="{{ evaluee.unemployment_factor or '' }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="fringe_benefit" class="form-label">Fringe Benefit</label>
+                <input type="number" step="0.0001" class="form-control" id="fringe_benefit" 
+                       name="fringe_benefit" value="{{ evaluee.fringe_benefit or '' }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="tax_liability" class="form-label">Tax Liability</label>
+                <input type="number" step="0.0001" class="form-control" id="tax_liability" 
+                       name="tax_liability" value="{{ evaluee.tax_liability or '' }}" required>
+            </div>
+            
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="wrongful_death" 
+                       name="wrongful_death" {% if evaluee.wrongful_death %}checked{% endif %}>
+                <label class="form-check-label" for="wrongful_death">Wrongful Death Case</label>
+            </div>
+            
+            <div id="personal_consumption" class="mb-3" {% if not evaluee.wrongful_death %}style="display: none;"{% endif %}>
+                <label for="personal_type" class="form-label">Personal Consumption Type</label>
+                <input type="text" class="form-control" id="personal_type" 
+                       name="personal_type" value="{{ evaluee.personal_type or '' }}">
+                
+                <label for="personal_percentage" class="form-label mt-2">Personal Consumption Percentage</label>
+                <input type="number" step="0.0001" class="form-control" id="personal_percentage" 
+                       name="personal_percentage" value="{{ evaluee.personal_percentage or '' }}">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Calculate AEF</button>
+            <a href="{{ url_for('evaluee.view', evaluee_id=evaluee_id) }}" class="btn btn-secondary">Cancel</a>
+        </form>
+        
+        {% if calculation_steps is defined and not calculation_steps.empty %}
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Calculation Steps</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for step in calculation_steps.itertuples() %}
+                            <tr>
+                                <td>{{ step.Step }}</td>
+                                <td>{{ step.Amount }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('wrongful_death').addEventListener('change', function() {
+    const personalConsumption = document.getElementById('personal_consumption');
+    personalConsumption.style.display = this.checked ? 'block' : 'none';
+});
+</script>
+{% endblock %} 

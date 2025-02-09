@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Demographics{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Demographics</h1>
+        <p class="lead">Enter demographic information for the evaluee.</p>
+        
+        <form method="POST">
+            <div class="mb-3">
+                <label for="date_of_birth" class="form-label">Date of Birth</label>
+                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="date_of_injury" class="form-label">Date of Injury</label>
+                <input type="date" class="form-control" id="date_of_injury" name="date_of_injury" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="life_expectancy" class="form-label">Life Expectancy (years)</label>
+                <input type="number" step="0.01" class="form-control" id="life_expectancy" name="life_expectancy" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="work_life_expectancy" class="form-label">Work Life Expectancy (years)</label>
+                <input type="number" step="0.01" class="form-control" id="work_life_expectancy" name="work_life_expectancy" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="years_to_final_separation" class="form-label">Years to Final Separation</label>
+                <input type="number" step="0.01" class="form-control" id="years_to_final_separation" name="years_to_final_separation" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Save Demographics</button>
+            <a href="{{ url_for('evaluee.view', evaluee_id=evaluee_id) }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %} 

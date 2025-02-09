@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Evaluees{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Evaluees</h1>
+            <a href="{{ url_for('evaluee.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> New Evaluee
+            </a>
+        </div>
+
+        {% if evaluees %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>State</th>
+                        <th>Discounting</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for evaluee in evaluees %}
+                    <tr>
+                        <td>{{ evaluee.first_name }} {{ evaluee.last_name }}</td>
+                        <td>{{ evaluee.state }}</td>
+                        <td>
+                            {% if evaluee.uses_discounting %}
+                            <span class="badge bg-success">Yes</span>
+                            <small class="text-muted">{{ evaluee.discount_rates|join(', ') }}%</small>
+                            {% else %}
+                            <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ evaluee.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('evaluee.view', evaluee_id=evaluee.id) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    View
+                                </a>
+                                <a href="{{ url_for('evaluee.edit', evaluee_id=evaluee.id) }}" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                    Edit
+                                </a>
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-danger"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteModal{{ evaluee.id }}">
+                                    Delete
+                                </button>
+                            </div>
+
+                            <!-- Delete Confirmation Modal -->
+                            <div class="modal fade" id="deleteModal{{ evaluee.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Confirm Delete</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            Are you sure you want to delete {{ evaluee.first_name }} {{ evaluee.last_name }}?
+                                            This action cannot be undone.
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form action="{{ url_for('evaluee.delete', evaluee_id=evaluee.id) }}" 
+                                                  method="POST" style="display: inline;">
+                                                <button type="submit" class="btn btn-danger">Delete</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            No evaluees found. Click the "New Evaluee" button to create one.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+{% endblock %} 

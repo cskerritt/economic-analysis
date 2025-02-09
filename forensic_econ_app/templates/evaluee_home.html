@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Welcome, {{ evaluee.first_name }} {{ evaluee.last_name }}</h2>
+<p>State: {{ evaluee.state }}</p>
+<p>Uses Discounting: {{ 'Yes' if evaluee.uses_discounting else 'No' }} |
+Discount Rates: {{ evaluee.discount_rates_str }}</p>
+
+<ul>
+  <li><a href="{{ url_for('demographics', eid=evaluee.id) }}">Demographics</a></li>
+  <li><a href="{{ url_for('worklife', eid=evaluee.id) }}">Worklife Factor Calculator</a></li>
+  <li><a href="{{ url_for('aef', eid=evaluee.id) }}">AEF Calculator</a></li>
+  <li><a href="{{ url_for('earnings', eid=evaluee.id) }}">Earnings Calculator</a></li>
+</ul>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Create Evaluee{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title">Create New Evaluee</h1>
+                <p class="lead">Enter the evaluee's basic information.</p>
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="state" class="form-label">State (Jurisdiction)</label>
+                        <input type="text" class="form-control" id="state" name="state" required>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="discounting" name="discounting" checked>
+                        <label class="form-check-label" for="discounting">Use Discounting</label>
+                    </div>
+                    
+                    <div id="discount_rates_group" class="mb-3">
+                        <label for="discount_rates" class="form-label">Discount Rates (comma-separated percentages)</label>
+                        <input type="text" class="form-control" id="discount_rates" name="discount_rates" 
+                               value="3,5,7" placeholder="e.g., 3,5,7">
+                        <div class="form-text">Enter discount rates as comma-separated numbers (e.g., 3,5,7)</div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Create Evaluee</button>
+                        <a href="{{ url_for('evaluee.index') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('discounting').addEventListener('change', function() {
+    const ratesGroup = document.getElementById('discount_rates_group');
+    ratesGroup.style.display = this.checked ? 'block' : 'none';
+    if (!this.checked) {
+        document.getElementById('discount_rates').value = '0';
+    } else {
+        document.getElementById('discount_rates').value = '3,5,7';
+    }
+});
+</script>
+{% endblock %} 

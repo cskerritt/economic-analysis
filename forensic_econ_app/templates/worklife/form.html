@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Worklife Factor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Worklife Factor Calculator</h1>
+        <p class="lead">Calculate the worklife factor based on work life expectancy and years to final separation.</p>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Current Values</h5>
+                <p class="card-text">
+                    Work Life Expectancy: {{ evaluee.work_life_expectancy }} years<br>
+                    Years to Final Separation: {{ evaluee.years_to_final_separation }} years<br>
+                    {% if evaluee.worklife_factor %}
+                    Current Worklife Factor: {{ "%.4f"|format(evaluee.worklife_factor) }}
+                    {% else %}
+                    No worklife factor calculated yet.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        
+        <form method="POST">
+            <div class="mb-3">
+                <label for="work_life_expectancy" class="form-label">Work Life Expectancy (years)</label>
+                <input type="number" step="0.01" class="form-control" id="work_life_expectancy" 
+                       name="work_life_expectancy" value="{{ evaluee.work_life_expectancy or '' }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="years_to_final_separation" class="form-label">Years to Final Separation</label>
+                <input type="number" step="0.01" class="form-control" id="years_to_final_separation" 
+                       name="years_to_final_separation" value="{{ evaluee.years_to_final_separation or '' }}" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Calculate Factor</button>
+            <a href="{{ url_for('evaluee.view', evaluee_id=evaluee_id) }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %} 
