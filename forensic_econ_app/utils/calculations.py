@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 import os
+import decimal
 
 # Configure decimal context
 getcontext().prec = 28
@@ -227,21 +228,41 @@ def compute_earnings_table(
     date_of_birth: Optional[datetime] = None,
     reference_start: Optional[datetime] = None,
     config: dict = DEFAULT_CONFIG,
-    include_discounting: bool = True
+    include_discounting: bool = True,
+    offset_wages: dict = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Decimal, Decimal]:
     """Compute earnings table with growth and present value calculations."""
     try:
-        # Convert inputs to Decimal
-        annual_wage = Decimal(str(wage_base))
-        residual = Decimal(str(residual_base))
-        growth = Decimal(str(growth_rate)) / Decimal("100")
-        
-        # Handle discounting
-        if include_discounting and discount_rate is not None:
-            discount = Decimal(str(discount_rate)) / Decimal("100")
-        else:
-            discount = None
-        
+        # Input validation
+        if not isinstance(start_date, datetime) or not isinstance(end_date, datetime):
+            raise ValueError("Start date and end date must be datetime objects")
+        if start_date > end_date:
+            raise ValueError("Start date cannot be after end date")
+        if wage_base < 0:
+            raise ValueError("Wage base cannot be negative")
+        if adjustment_factor <= 0:  # Allow any positive adjustment factor
+            raise ValueError("Adjustment factor must be positive")
+        if growth_rate < -1:  # Allow negative growth but not less than -100%
+            raise ValueError("Growth rate cannot be less than -100%")
+        if date_of_birth and date_of_birth > start_date:
+            raise ValueError("Date of birth cannot be after start date")
+
+        # Convert inputs to Decimal with validation
+        try:
+            annual_wage = Decimal(str(wage_base))
+            residual = Decimal(str(residual_base))
+            growth = Decimal(str(growth_rate))  # Already in decimal form (e.g., 0.0225 for 2.25%)
+            adj_factor = Decimal(str(adjustment_factor)) / Decimal("100")  # Convert percentage to decimal
+            
+            if include_discounting and discount_rate is not None:
+                if discount_rate < 0:
+                    raise ValueError("Discount rate cannot be negative")
+                discount = Decimal(str(discount_rate))
+            else:
+                discount = None
+        except (ValueError, TypeError, decimal.InvalidOperation) as e:
+            raise ValueError(f"Invalid numeric input: {str(e)}")
+
         # Initialize calculations
         raw_data = []  # For Excel export
         display_data = []  # For web display
@@ -251,18 +272,28 @@ def compute_earnings_table(
         current_date = start_date
         ref_date = reference_start or start_date
         current_wage = annual_wage
-        current_residual = residual  # Track current residual separately
-        prev_year = start_date.year - 1
+        current_residual = residual
+        
+        # Validate and convert offset wages
+        offset_wages_dict = {}
+        if offset_wages:
+            try:
+                for year, amount in offset_wages.items():
+                    year_int = int(year)
+                    if year_int < start_date.year or year_int > end_date.year:
+                        raise ValueError(f"Offset wage year {year} is outside scenario date range")
+                    if amount < 0:
+                        raise ValueError(f"Offset wage amount cannot be negative for year {year}")
+                    offset_wages_dict[year_int] = Decimal(str(amount))
+            except (ValueError, TypeError, decimal.InvalidOperation) as e:
+                raise ValueError(f"Invalid offset wage data: {str(e)}")
+
+        # Track previous values for validation
+        prev_period_base = None
+        prev_year = None
         
         while current_date <= end_date:
             year = current_date.year
-            
-            # Apply growth rate if year has changed
-            if year > prev_year:
-                if prev_year >= start_date.year:
-                    current_wage *= (Decimal("1") + growth)
-                    current_residual *= (Decimal("1") + growth)  # Apply growth to residual
-                prev_year = year
             
             # Calculate portion of year
             if year == start_date.year:
@@ -275,31 +306,51 @@ def compute_earnings_table(
                 year_start = datetime(year, 1, 1)
                 year_end = datetime(year, 12, 31)
             
-            # Calculate exact days for portion
+            # Validate year progression
+            if prev_year and year <= prev_year:
+                raise ValueError(f"Invalid year progression: {prev_year} to {year}")
+            prev_year = year
+            
+            # Calculate exact days for portion with validation
             days_in_year = 366 if year % 4 == 0 else 365
             days_in_period = (min(year_end, end_date) - year_start).days + 1
+            if days_in_period <= 0:
+                raise ValueError(f"Invalid period days calculation for year {year}")
             portion = Decimal(str(days_in_period)) / Decimal(str(days_in_year))
+            
+            # Validate portion
+            if portion <= 0 or portion > 1:
+                raise ValueError(f"Invalid portion of year calculated: {portion}")
             
             # Calculate age if birth date provided
             age = calculate_age(date_of_birth, year_start) if date_of_birth else None
+            if age and age < 0:
+                raise ValueError(f"Invalid age calculated: {age}")
+            
+            # Apply growth rate at the start of each year after the first year
+            if year > start_date.year:
+                current_wage *= (Decimal("1") + growth)
+                current_residual *= (Decimal("1") + growth)
             
             # Calculate period base wage with portion
             period_base = current_wage * portion
             
-            # Calculate adjusted wage using either provided adjustment factor or computed factor
-            if adjustment_factor is not None:
-                adj_factor = Decimal(str(adjustment_factor)) / Decimal("100")
-            else:
-                adj_factor = compute_adjusted_income_factor(year, config)
-            
+            # Calculate adjusted wage using adjustment factor
             period_adjusted = period_base * adj_factor
-            period_residual = current_residual * portion  # Use current_residual instead of residual
-            period_loss = abs(period_adjusted - period_residual)  # Use absolute value for loss
+            
+            # Apply offset wages if available for this year
+            if year in offset_wages_dict:
+                period_residual = offset_wages_dict[year] * portion
+            else:
+                period_residual = current_residual * portion
+            
+            # Calculate loss
+            period_loss = period_adjusted - period_residual
             
             # Calculate present value if discounting is enabled
             if include_discounting and discount is not None:
                 years_from_ref = Decimal(str((year_start - ref_date).days)) / Decimal("365.25")
-                pv = abs(compute_present_value(period_loss, discount, years_from_ref))  # Use absolute value for PV
+                pv = compute_present_value(period_loss, discount, years_from_ref)
             else:
                 pv = period_loss
             
@@ -315,12 +366,12 @@ def compute_earnings_table(
             }
             
             if include_discounting:
-                raw_row["Present Value"] = float(pv)  # Removed [@3.00%]
+                raw_row["Present Value"] = float(pv)
             
             # Store formatted values for display
             display_row = {
                 "Year": year,
-                "Portion of Year": format_percentage(portion),
+                "Portion of Year": "{:.2%}".format(float(portion)),
                 "Age": f"{float(age):.2f}" if age is not None else "",
                 "Wage Base Years": format_currency(period_base),
                 "Residual Earning Capacity": format_currency(period_residual),
@@ -329,7 +380,7 @@ def compute_earnings_table(
             }
             
             if include_discounting:
-                display_row["Present Value"] = format_currency(pv)  # Removed [@3.00%]
+                display_row["Present Value"] = format_currency(pv)
             
             raw_data.append(raw_row)
             display_data.append(display_row)
@@ -343,9 +394,13 @@ def compute_earnings_table(
             
             current_date = year_end + relativedelta(days=1)
         
+        # Final validation of totals
+        if len(raw_data) == 0:
+            raise ValueError("No data points calculated")
+        
         raw_df = pd.DataFrame(raw_data)
         display_df = pd.DataFrame(display_data)
         return raw_df, display_df, total_pv, total_loss
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError, decimal.InvalidOperation) as e:
         print(f"Error in compute_earnings_table: {str(e)}")
         return pd.DataFrame(), pd.DataFrame(), Decimal("0"), Decimal("0") 

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ scenario.scenario_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Edit Scenario</h1>
+                <a href="{{ url_for('earnings.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Scenario
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="scenario_name" class="form-label">Scenario Name</label>
+                            <input type="text" class="form-control" id="scenario_name" name="scenario_name" 
+                                   value="{{ scenario.scenario_name }}" required>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="start_date" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" 
+                                       value="{{ scenario.start_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="end_date" class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" 
+                                       value="{{ scenario.end_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="wage_base" class="form-label">Base Wage (Annual)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" class="form-control" id="wage_base" name="wage_base" 
+                                           value="{{ scenario.wage_base }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="residual_base" class="form-label">Residual Base</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" class="form-control" id="residual_base" name="residual_base" 
+                                           value="{{ scenario.residual_base if scenario.residual_base != 0 else '' }}"
+                                           placeholder="0.00">
+                                </div>
+                                <small class="form-text text-muted">Leave empty or set to 0 to use offset wages for specific years.</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="growth_rate" class="form-label">Growth Rate (%)</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="growth_rate" name="growth_rate" 
+                                           value="{{ scenario.growth_rate * 100 }}" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="adjustment_factor" class="form-label">Adjustment Factor</label>
+                                <input type="number" step="0.0001" class="form-control" id="adjustment_factor" name="adjustment_factor" 
+                                       value="{{ scenario.adjustment_factor }}">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('earnings.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                               class="btn btn-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+{% endblock %} 

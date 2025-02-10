@@ -60,4 +60,16 @@ class EarningsScenario(db.Model):
     
     # Store calculation results
     present_value = db.Column(db.Numeric(15, 2))
-    total_loss = db.Column(db.Numeric(15, 2)) 
+    total_loss = db.Column(db.Numeric(15, 2))
+    
+    # Add relationship to offset wages
+    offset_wages = db.relationship('OffsetWage', backref='scenario', lazy=True, cascade='all, delete-orphan')
+
+class OffsetWage(db.Model):
+    """Model for storing offset wages for specific years in a scenario."""
+    id = db.Column(db.Integer, primary_key=True)
+    scenario_id = db.Column(db.Integer, db.ForeignKey('earnings_scenario.id'), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    description = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow) 

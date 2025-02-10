@@ -59,7 +59,7 @@
             <a href="{{ url_for('evaluee.view', evaluee_id=evaluee_id) }}" class="btn btn-secondary">Cancel</a>
         </form>
         
-        {% if calculation_steps is defined and not calculation_steps.empty %}
+        {% if calculation_steps is defined and calculation_steps is not none and not calculation_steps.empty %}
         <div class="card mt-4">
             <div class="card-body">
                 <h5 class="card-title">Calculation Steps</h5>
