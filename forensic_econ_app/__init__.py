@@ -20,10 +20,15 @@ def create_app(config_name=None):
     
     # Register blueprints
     from .routes import evaluee, demographics, worklife, aef, earnings
+    from forensic_econ_app.routes.healthcare import healthcare
+    from forensic_econ_app.routes.settings import settings
+    
     app.register_blueprint(evaluee.bp)
     app.register_blueprint(demographics.bp)
     app.register_blueprint(worklife.bp)
     app.register_blueprint(aef.bp)
     app.register_blueprint(earnings.bp)
+    app.register_blueprint(healthcare)
+    app.register_blueprint(settings)
     
     return app 

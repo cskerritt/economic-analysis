@@ -25,6 +25,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('evaluee.index') }}">Evaluees</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('settings.manage_cpi_rates') }}">CPI Rates</a>
+                    </li>
                     {% if request.view_args.get('evaluee_id') %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('demographics.form', evaluee_id=request.view_args.evaluee_id) }}">Demographics</a>
@@ -37,6 +40,9 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('earnings.form', evaluee_id=request.view_args.evaluee_id) }}">Earnings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('healthcare.healthcare_form', evaluee_id=request.view_args.evaluee_id) }}">Healthcare</a>
                     </li>
                     {% endif %}
                 </ul>

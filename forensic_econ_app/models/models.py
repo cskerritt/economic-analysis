@@ -72,4 +72,48 @@ class OffsetWage(db.Model):
     year = db.Column(db.Integer, nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     description = db.Column(db.String(200))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow) 
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class HealthcareScenario(db.Model):
+    """Model for storing healthcare expense scenarios."""
+    id = db.Column(db.Integer, primary_key=True)
+    evaluee_id = db.Column(db.Integer, db.ForeignKey('evaluee.id'), nullable=False)
+    scenario_name = db.Column(db.String(100), nullable=False)
+    growth_method = db.Column(db.String(20), default='CPI')  # CPI, PCE, or custom
+    growth_rate_custom = db.Column(db.Numeric(10, 4))
+    discount_method = db.Column(db.String(20), default='nominal')  # nominal, real, or net
+    discount_rate = db.Column(db.Numeric(10, 4))
+    partial_offset = db.Column(db.Boolean, default=False)
+    total_offset = db.Column(db.Boolean, default=False)
+    projection_years = db.Column(db.Integer, default=20)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    medical_items = db.relationship('MedicalItem', backref='scenario', lazy=True, cascade='all, delete-orphan')
+    evaluee = db.relationship('Evaluee', backref='healthcare_scenarios', lazy=True)
+
+class MedicalItem(db.Model):
+    """Model for storing medical items within a healthcare scenario."""
+    id = db.Column(db.Integer, primary_key=True)
+    scenario_id = db.Column(db.Integer, db.ForeignKey('healthcare_scenario.id'), nullable=False)
+    label = db.Column(db.String(100), nullable=False)
+    annual_cost = db.Column(db.Numeric(10, 2), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class CPIRate(db.Model):
+    """Model for storing universal CPI rates."""
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False, unique=True)
+    rate = db.Column(db.Numeric(10, 4), nullable=False)
+    description = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @staticmethod
+    def get_rate(category):
+        """Get the rate for a specific CPI category."""
+        rate = CPIRate.query.filter_by(category=category).first()
+        return float(rate.rate) if rate else None
+
+    def __repr__(self):
+        return f'<CPIRate {self.category}: {self.rate}%>' 

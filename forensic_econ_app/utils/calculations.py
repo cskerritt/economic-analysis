@@ -64,50 +64,53 @@ def calculate_aef(
     personal_type: str = "",
     personal_percentage: float = 0.0
 ) -> Tuple[pd.DataFrame, Decimal]:
-    """Calculate Annual Earnings Factor with all components."""
+    """Calculate Annual Earnings Factor with detailed steps."""
     try:
-        # Convert inputs to Decimal for precise calculation
-        base = Decimal(str(gross_earnings_base))
-        wl_adj = Decimal(str(worklife_adjustment))
-        unemp = Decimal(str(unemployment_factor))
+        # Convert inputs to Decimal for precise calculations
+        gross_base = Decimal(str(gross_earnings_base))
+        worklife_adj = Decimal(str(worklife_adjustment))
+        unemp_factor = Decimal(str(unemployment_factor))
         fringe = Decimal(str(fringe_benefit))
         tax = Decimal(str(tax_liability))
-        personal = Decimal(str(personal_percentage))
-
-        # Create calculation steps DataFrame
+        
+        # Step-by-step calculations
+        adjusted_base_earnings = gross_base * worklife_adj * (Decimal('1.0') - unemp_factor)
+        tax_adjusted_earnings = adjusted_base_earnings * (Decimal('1.0') - tax)
+        final_adjusted_earnings = tax_adjusted_earnings * (Decimal('1.0') + fringe)
+        
+        # Apply personal consumption adjustment if wrongful death case
+        if wrongful_death and personal_percentage > 0:
+            personal_adj = Decimal(str(personal_percentage))
+            final_adjusted_earnings = final_adjusted_earnings * (Decimal('1.0') - personal_adj)
+        
+        # Create calculation steps table
         steps = []
-        current = base
-
-        steps.append(("Base Annual Earnings", current))
+        steps.append(("Gross Earnings Base", gross_base * Decimal('100')))
+        steps.append(("x Worklife Adjustment", worklife_adj * Decimal('100')))
+        steps.append((f"x (1 - {unemp_factor * Decimal('100'):.2f}% Unemployment Factor)", 
+                     (Decimal('1.0') - unemp_factor) * Decimal('100')))
+        steps.append(("= Adjusted Base Earnings", adjusted_base_earnings * Decimal('100')))
+        steps.append((f"x (1 - {tax * Decimal('100'):.2f}% Tax Liabilities)", 
+                     (Decimal('1.0') - tax) * Decimal('100')))
+        steps.append((f"x (1 + {fringe * Decimal('100'):.2f}% Fringe Benefits)", 
+                     (Decimal('1.0') + fringe) * Decimal('100')))
+        steps.append(("= Fringe Benefits/Tax Adjusted Earnings Base", 
+                     final_adjusted_earnings * Decimal('100')))
         
-        # Apply worklife adjustment
-        current *= wl_adj
-        steps.append(("After Worklife Adjustment", current))
-        
-        # Apply unemployment factor
-        current *= (Decimal("1") - unemp)
-        steps.append(("After Unemployment", current))
-        
-        # Add fringe benefits
-        current *= (Decimal("1") + fringe)
-        steps.append(("After Fringe Benefits", current))
-        
-        # Subtract tax liability if not wrongful death
-        if not wrongful_death:
-            current *= (Decimal("1") - tax)
-            steps.append(("After Tax Liability", current))
+        if wrongful_death and personal_percentage > 0:
+            steps.append((f"x (1 - {personal_percentage * Decimal('100'):.2f}% Personal Consumption)", 
+                         (Decimal('1.0') - Decimal(str(personal_percentage))) * Decimal('100')))
             
-        # Apply personal consumption if wrongful death
-        if wrongful_death and personal_type:
-            current *= (Decimal("1") - personal)
-            steps.append((f"After {personal_type}", current))
-
-        df = pd.DataFrame(steps, columns=["Step", "Amount"])
-        df["Amount"] = df["Amount"].apply(lambda x: format_currency(x))
+        steps.append(("AEF", final_adjusted_earnings * Decimal('100')))
         
-        return df, current
-    except (ValueError, TypeError):
-        return pd.DataFrame(), Decimal("0")
+        # Create DataFrame
+        df = pd.DataFrame(steps, columns=['Step', 'Amount'])
+        df['Amount'] = df['Amount'].apply(lambda x: f"{x:.2f}%")
+        
+        return df, final_adjusted_earnings
+        
+    except (ValueError, decimal.InvalidOperation) as e:
+        raise ValueError(f"Error in AEF calculation: {str(e)}")
 
 def compute_adjusted_income_factor(year: int, config: dict = DEFAULT_CONFIG) -> Decimal:
     """Compute the adjusted income factor based on the year."""

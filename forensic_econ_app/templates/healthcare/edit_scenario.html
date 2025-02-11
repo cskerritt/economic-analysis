@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Edit Healthcare Scenario</h2>
+    <h4 class="text-muted">{{ evaluee.first_name }} {{ evaluee.last_name }}</h4>
+    
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Edit Scenario Parameters</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('healthcare.edit_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}">
+                        <div class="mb-3">
+                            <label for="scenario_name" class="form-label">Scenario Name</label>
+                            <input type="text" class="form-control" id="scenario_name" name="scenario_name" 
+                                   value="{{ scenario.scenario_name }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="growth_method" class="form-label">Growth Method</label>
+                            <select class="form-select" id="growth_method" name="growth_method" onchange="toggleCustomGrowthRate()">
+                                <option value="CPI" {% if scenario.growth_method == 'CPI' %}selected{% endif %}>
+                                    CPI ({{ "%.1f"|format(cpi_rates['CPI']) }}%)
+                                </option>
+                                <option value="PCE" {% if scenario.growth_method == 'PCE' %}selected{% endif %}>
+                                    PCE ({{ "%.1f"|format(cpi_rates['PCE']) }}%)
+                                </option>
+                                <option value="Medical_CPI" {% if scenario.growth_method == 'Medical_CPI' %}selected{% endif %}>
+                                    Medical CPI ({{ "%.1f"|format(cpi_rates['Medical_CPI']) }}%)
+                                </option>
+                                <option value="custom" {% if scenario.growth_method == 'custom' %}selected{% endif %}>Custom Rate</option>
+                            </select>
+                            <div class="form-text">Select the method for calculating growth rate</div>
+                        </div>
+                        
+                        <div class="mb-3" id="custom_growth_rate_div" style="display: {% if scenario.growth_method == 'custom' %}block{% else %}none{% endif %}">
+                            <label for="growth_rate_custom" class="form-label">Custom Growth Rate (%)</label>
+                            <input type="number" class="form-control" id="growth_rate_custom" name="growth_rate_custom" 
+                                   value="{{ "%.1f"|format(scenario.growth_rate_custom * 100) }}" step="0.1">
+                            <div class="form-text">Enter a custom annual growth rate as a percentage</div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="discount_method" class="form-label">Discount Method</label>
+                                <select class="form-select" id="discount_method" name="discount_method">
+                                    <option value="nominal" {% if scenario.discount_method == 'nominal' %}selected{% endif %}>Nominal</option>
+                                    <option value="real" {% if scenario.discount_method == 'real' %}selected{% endif %}>Real</option>
+                                    <option value="net" {% if scenario.discount_method == 'net' %}selected{% endif %}>Net Discount</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="discount_rate" class="form-label">Discount Rate (%)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="discount_rate" name="discount_rate" 
+                                           step="0.1" value="{{ scenario.discount_rate * 100 }}">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="projection_years" class="form-label">Projection Years</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="projection_years" name="projection_years" 
+                                           value="{{ scenario.projection_years }}" min="1" max="100">
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="document.getElementById('projection_years').value = '{{ evaluee.life_expectancy|int if evaluee.life_expectancy else 20 }}'">
+                                        Reset to Life Expectancy
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    {% if evaluee.life_expectancy %}
+                                        Based on evaluee's life expectancy of {{ evaluee.life_expectancy|int }} years.
+                                        {% if evaluee.date_of_birth %}
+                                            <br>
+                                            Current age: {{ ((now - evaluee.date_of_birth).days / 365.25)|int }} years
+                                        {% endif %}
+                                    {% else %}
+                                        Life expectancy not set in demographics.
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="partial_offset" name="partial_offset"
+                                           {% if scenario.partial_offset %}checked{% endif %}>
+                                    <label class="form-check-label" for="partial_offset">
+                                        Use Partial Offset
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="total_offset" name="total_offset"
+                                           {% if scenario.total_offset %}checked{% endif %}>
+                                    <label class="form-check-label" for="total_offset">
+                                        Use Total Offset
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <a href="{{ url_for('healthcare.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                           class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const growthMethodSelect = document.getElementById('growth_method');
+    const growthRateCustomInput = document.getElementById('growth_rate_custom');
+    const partialOffsetCheckbox = document.getElementById('partial_offset');
+    const totalOffsetCheckbox = document.getElementById('total_offset');
+    
+    // Toggle custom growth rate input visibility
+    function updateGrowthRateVisibility() {
+        growthRateCustomInput.disabled = growthMethodSelect.value !== 'custom';
+    }
+    
+    // Ensure only one offset type can be selected
+    function handleOffsetChange(e) {
+        if (e.target === partialOffsetCheckbox && partialOffsetCheckbox.checked) {
+            totalOffsetCheckbox.checked = false;
+        } else if (e.target === totalOffsetCheckbox && totalOffsetCheckbox.checked) {
+            partialOffsetCheckbox.checked = false;
+        }
+    }
+    
+    growthMethodSelect.addEventListener('change', updateGrowthRateVisibility);
+    partialOffsetCheckbox.addEventListener('change', handleOffsetChange);
+    totalOffsetCheckbox.addEventListener('change', handleOffsetChange);
+    
+    // Initial setup
+    updateGrowthRateVisibility();
+});
+
+function toggleCustomGrowthRate() {
+    var growthMethod = document.getElementById('growth_method').value;
+    var customDiv = document.getElementById('custom_growth_rate_div');
+    customDiv.style.display = growthMethod === 'custom' ? 'block' : 'none';
+}
+</script>
+{% endblock %}
+{% endblock %} 

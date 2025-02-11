@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Manage Medical Costs</h2>
+    <h4 class="text-muted">{{ scenario.scenario_name }} - {{ evaluee.first_name }} {{ evaluee.last_name }}</h4>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Add New Medical Cost</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('healthcare.add_item', evaluee_id=evaluee.id, scenario_id=scenario.id) }}">
+                        <div class="mb-3">
+                            <label for="label" class="form-label">Medical Item Description</label>
+                            <input type="text" class="form-control" id="label" name="label" 
+                                   placeholder="e.g., Physical Therapy, Medication, Surgery" required>
+                            <div class="form-text">Enter a descriptive name for the medical cost</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="annual_cost" class="form-label">Annual Cost ($)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="annual_cost" name="annual_cost" 
+                                       step="0.01" min="0" placeholder="0.00" required>
+                            </div>
+                            <div class="form-text">Enter the yearly cost for this medical item</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus-circle"></i> Add Medical Cost
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Current Medical Costs</h4>
+                </div>
+                <div class="card-body">
+                    {% if scenario.medical_items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th class="text-end">Annual Cost</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in scenario.medical_items %}
+                                        <tr>
+                                            <td>{{ item.label }}</td>
+                                            <td class="text-end">${{ "{:,.2f}".format(item.annual_cost) }}</td>
+                                            <td class="text-center">
+                                                <form method="POST" action="{{ url_for('healthcare.delete_item', evaluee_id=evaluee.id, scenario_id=scenario.id, item_id=item.id) }}"
+                                                      style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" 
+                                                            onclick="return confirm('Are you sure you want to delete this medical cost?')">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    <tr class="table-info">
+                                        <td><strong>Total Annual Costs:</strong></td>
+                                        <td class="text-end"><strong>${{ "{:,.2f}".format(scenario.medical_items|sum(attribute='annual_cost')) }}</strong></td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            No medical costs have been added yet. Use the form on the left to add your first medical cost.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{{ url_for('healthcare.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+           class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Scenario
+        </a>
+    </div>
+</div>
+{% endblock %} 
