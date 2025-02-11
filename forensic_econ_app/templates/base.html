@@ -21,29 +21,54 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('evaluee.index') }}">Evaluees</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('settings.manage_cpi_rates') }}">CPI Rates</a>
+                        </li>
+                        {% if request.view_args.get('evaluee_id') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('demographics.form', evaluee_id=request.view_args.evaluee_id) }}">Demographics</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('worklife.form', evaluee_id=request.view_args.evaluee_id) }}">Worklife</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('aef.form', evaluee_id=request.view_args.evaluee_id) }}">AEF</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('earnings.form', evaluee_id=request.view_args.evaluee_id) }}">Earnings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('healthcare.healthcare_form', evaluee_id=request.view_args.evaluee_id) }}">Healthcare</a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                
                 <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('evaluee.index') }}">Evaluees</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('settings.manage_cpi_rates') }}">CPI Rates</a>
-                    </li>
-                    {% if request.view_args.get('evaluee_id') %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('demographics.form', evaluee_id=request.view_args.evaluee_id) }}">Demographics</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('worklife.form', evaluee_id=request.view_args.evaluee_id) }}">Worklife</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('aef.form', evaluee_id=request.view_args.evaluee_id) }}">AEF</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('earnings.form', evaluee_id=request.view_args.evaluee_id) }}">Earnings</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('healthcare.healthcare_form', evaluee_id=request.view_args.evaluee_id) }}">Healthcare</a>
-                    </li>
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.signup') }}">Sign Up</a>
+                        </li>
                     {% endif %}
                 </ul>
             </div>

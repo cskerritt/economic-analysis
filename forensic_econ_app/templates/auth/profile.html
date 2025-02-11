@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - {{ current_user.username }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2>User Profile</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center mb-4">
+                                <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 150px; height: 150px; font-size: 48px; margin: 0 auto;">
+                                    {{ current_user.username[0].upper() }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <dl class="row">
+                                <dt class="col-sm-4">Username</dt>
+                                <dd class="col-sm-8">{{ current_user.username }}</dd>
+                                
+                                <dt class="col-sm-4">Email</dt>
+                                <dd class="col-sm-8">{{ current_user.email }}</dd>
+                                
+                                <dt class="col-sm-4">Member Since</dt>
+                                <dd class="col-sm-8">{{ current_user.created_at.strftime('%B %d, %Y') }}</dd>
+                                
+                                <dt class="col-sm-4">Account Status</dt>
+                                <dd class="col-sm-8">
+                                    {% if current_user.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3>Your Evaluees</h3>
+                </div>
+                <div class="card-body">
+                    {% if current_user.evaluees %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>State</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for evaluee in current_user.evaluees %}
+                                        <tr>
+                                            <td>{{ evaluee.first_name }} {{ evaluee.last_name }}</td>
+                                            <td>{{ evaluee.state }}</td>
+                                            <td>{{ evaluee.created_at.strftime('%Y-%m-%d') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('evaluee.view', evaluee_id=evaluee.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary">View</a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <p class="mb-0">You haven't created any evaluees yet. 
+                                <a href="{{ url_for('evaluee.create') }}">Create your first evaluee</a>
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

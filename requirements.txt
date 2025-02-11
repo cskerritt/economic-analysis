@@ -8,5 +8,13 @@ Werkzeug==3.0.1
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
 Flask-WTF==1.2.1
+Flask-Login==0.6.3
 openpyxl==3.1.2
-gunicorn==21.2.0 
+gunicorn==21.2.0
+numpy==1.26.3
+pytest==7.4.4
+coverage==7.4.1
+supervisor==4.2.5
+redis==5.0.1
+Flask-Session==0.6.0
+Flask-Caching==2.1.0 
