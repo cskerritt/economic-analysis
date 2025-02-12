@@ -120,19 +120,19 @@
                         </div>
                         <dl class="row">
                             <dt class="col-sm-3">Gross Earnings Base</dt>
-                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.gross_earnings_base * 100) }}</dd>
+                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.gross_earnings_base * 100) if evaluee.gross_earnings_base is not none else 'Not set' }}</dd>
                             
                             <dt class="col-sm-3">Worklife Adjustment</dt>
-                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.worklife_adjustment * 100) }}</dd>
+                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.worklife_adjustment * 100) if evaluee.worklife_adjustment is not none else 'Not set' }}</dd>
                             
                             <dt class="col-sm-3">Unemployment Factor</dt>
-                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.unemployment_factor * 100) }}</dd>
+                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.unemployment_factor * 100) if evaluee.unemployment_factor is not none else 'Not set' }}</dd>
                             
                             <dt class="col-sm-3">Fringe Benefit</dt>
-                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.fringe_benefit * 100) }}</dd>
+                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.fringe_benefit * 100) if evaluee.fringe_benefit is not none else 'Not set' }}</dd>
                             
                             <dt class="col-sm-3">Tax Liability</dt>
-                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.tax_liability * 100) }}</dd>
+                            <dd class="col-sm-9">{{ "%.2f%%"|format(evaluee.tax_liability * 100) if evaluee.tax_liability is not none else 'Not set' }}</dd>
                         </dl>
                     </div>
                 </div>

@@ -2,18 +2,21 @@ from flask import (
     Blueprint, render_template, request, redirect,
     url_for, flash, current_app
 )
+from flask_login import login_required, current_user
 from ..models.models import db, Evaluee
 from datetime import timedelta
 
 bp = Blueprint('evaluee', __name__)
 
 @bp.route('/')
+@login_required
 def index():
     """List all evaluees."""
-    evaluees = Evaluee.query.order_by(Evaluee.created_at.desc()).all()
+    evaluees = Evaluee.query.filter_by(user_id=current_user.id).order_by(Evaluee.created_at.desc()).all()
     return render_template('evaluee/index.html', evaluees=evaluees)
 
 @bp.route('/create', methods=['GET', 'POST'])
+@login_required
 def create():
     """Create a new evaluee."""
     if request.method == 'POST':
@@ -38,6 +41,7 @@ def create():
             return redirect(url_for('evaluee.create'))
         
         evaluee = Evaluee(
+            user_id=current_user.id,
             first_name=first_name,
             last_name=last_name,
             state=state,
@@ -59,15 +63,23 @@ def create():
     return render_template('evaluee/create.html')
 
 @bp.route('/<int:evaluee_id>')
+@login_required
 def view(evaluee_id):
     """View evaluee details."""
     evaluee = Evaluee.query.get_or_404(evaluee_id)
+    if evaluee.user_id != current_user.id:
+        flash('Access denied.')
+        return redirect(url_for('evaluee.index'))
     return render_template('evaluee/view.html', evaluee=evaluee, timedelta=timedelta)
 
 @bp.route('/<int:evaluee_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit(evaluee_id):
     """Edit evaluee details."""
     evaluee = Evaluee.query.get_or_404(evaluee_id)
+    if evaluee.user_id != current_user.id:
+        flash('Access denied.')
+        return redirect(url_for('evaluee.index'))
     
     if request.method == 'POST':
         evaluee.first_name = request.form.get('first_name', '').strip()
@@ -102,9 +114,14 @@ def edit(evaluee_id):
     return render_template('evaluee/edit.html', evaluee=evaluee)
 
 @bp.route('/<int:evaluee_id>/delete', methods=['POST'])
+@login_required
 def delete(evaluee_id):
     """Delete an evaluee."""
     evaluee = Evaluee.query.get_or_404(evaluee_id)
+    if evaluee.user_id != current_user.id:
+        flash('Access denied.')
+        return redirect(url_for('evaluee.index'))
+    
     try:
         db.session.delete(evaluee)
         db.session.commit()
