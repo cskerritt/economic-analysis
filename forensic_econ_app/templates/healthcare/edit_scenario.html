@@ -50,6 +50,7 @@
                                     <option value="nominal" {% if scenario.discount_method == 'nominal' %}selected{% endif %}>Nominal</option>
                                     <option value="real" {% if scenario.discount_method == 'real' %}selected{% endif %}>Real</option>
                                     <option value="net" {% if scenario.discount_method == 'net' %}selected{% endif %}>Net Discount</option>
+                                    <option value="none" {% if scenario.discount_method == 'none' %}selected{% endif %}>No Discounting</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -118,15 +119,17 @@
 document.addEventListener('DOMContentLoaded', function() {
     const growthMethodSelect = document.getElementById('growth_method');
     const growthRateCustomInput = document.getElementById('growth_rate_custom');
+    const customGrowthRateDiv = document.getElementById('custom_growth_rate_div');
     const partialOffsetCheckbox = document.getElementById('partial_offset');
     const totalOffsetCheckbox = document.getElementById('total_offset');
+    const discountMethodSelect = document.getElementById('discount_method');
+    const discountRateInput = document.getElementById('discount_rate');
     
-    // Toggle custom growth rate input visibility
-    function updateGrowthRateVisibility() {
+    function toggleCustomGrowthRate() {
+        customGrowthRateDiv.style.display = growthMethodSelect.value === 'custom' ? 'block' : 'none';
         growthRateCustomInput.disabled = growthMethodSelect.value !== 'custom';
     }
     
-    // Ensure only one offset type can be selected
     function handleOffsetChange(e) {
         if (e.target === partialOffsetCheckbox && partialOffsetCheckbox.checked) {
             totalOffsetCheckbox.checked = false;
@@ -135,19 +138,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    growthMethodSelect.addEventListener('change', updateGrowthRateVisibility);
+    // Handle discount method changes
+    function handleDiscountMethodChange() {
+        const isNoDiscounting = discountMethodSelect.value === 'none';
+        discountRateInput.disabled = isNoDiscounting;
+        if (isNoDiscounting) {
+            discountRateInput.value = '0.0';
+        } else if (discountRateInput.value === '0.0') {
+            discountRateInput.value = '5.0';
+        }
+    }
+    
+    growthMethodSelect.addEventListener('change', toggleCustomGrowthRate);
     partialOffsetCheckbox.addEventListener('change', handleOffsetChange);
     totalOffsetCheckbox.addEventListener('change', handleOffsetChange);
+    discountMethodSelect.addEventListener('change', handleDiscountMethodChange);
     
     // Initial setup
-    updateGrowthRateVisibility();
+    toggleCustomGrowthRate();
+    handleDiscountMethodChange();
 });
-
-function toggleCustomGrowthRate() {
-    var growthMethod = document.getElementById('growth_method').value;
-    var customDiv = document.getElementById('custom_growth_rate_div');
-    customDiv.style.display = growthMethod === 'custom' ? 'block' : 'none';
-}
 </script>
 {% endblock %}
 {% endblock %} 

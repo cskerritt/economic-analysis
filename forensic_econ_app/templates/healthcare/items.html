@@ -21,13 +21,59 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="annual_cost" class="form-label">Annual Cost ($)</label>
+                            <label for="annual_cost" class="form-label">Cost ($)</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" class="form-control" id="annual_cost" name="annual_cost" 
                                        step="0.01" min="0" placeholder="0.00" required>
                             </div>
-                            <div class="form-text">Enter the yearly cost for this medical item</div>
+                            <div class="form-text">Enter the cost (annual or one-time)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="growth_rate" class="form-label">Growth Rate (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="growth_rate" name="growth_rate" 
+                                       step="0.01" min="0" placeholder="Leave empty to use scenario rate">
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Individual growth rate for this item (leave empty to use scenario rate)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="is_one_time" name="is_one_time">
+                                <label class="form-check-label" for="is_one_time">One-time Cost</label>
+                            </div>
+                            <div class="form-text">Check if this is a one-time expense rather than recurring annually</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="age_initiated" class="form-label">Age Initiated</label>
+                            <input type="number" class="form-control" id="age_initiated" name="age_initiated" 
+                                   min="0" step="0.01" placeholder="Age when cost begins">
+                            <div class="form-text">Age when this cost begins (leave empty to use year-based timing)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="age_through" class="form-label">Age Through</label>
+                            <input type="number" class="form-control" id="age_through" name="age_through" 
+                                   min="0" step="0.01" placeholder="Age when cost ends">
+                            <div class="form-text">Age when this cost ends (leave empty for entire projection period)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="start_year" class="form-label">Start Year (Alternative)</label>
+                            <input type="number" class="form-control" id="start_year" name="start_year" 
+                                   min="1" value="1">
+                            <div class="form-text">Alternative: Year to start this cost (1 = first year)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="duration_years" class="form-label">Duration Years (Alternative)</label>
+                            <input type="number" class="form-control" id="duration_years" name="duration_years" 
+                                   min="1" placeholder="Number of years">
+                            <div class="form-text">Alternative: Number of years this cost will continue</div>
                         </div>
                         
                         <button type="submit" class="btn btn-primary btn-lg">
@@ -50,7 +96,10 @@
                                 <thead>
                                     <tr>
                                         <th>Description</th>
-                                        <th class="text-end">Annual Cost</th>
+                                        <th class="text-end">Cost</th>
+                                        <th>Type</th>
+                                        <th>Growth</th>
+                                        <th>Duration</th>
                                         <th class="text-center">Actions</th>
                                     </tr>
                                 </thead>
@@ -59,6 +108,29 @@
                                         <tr>
                                             <td>{{ item.label }}</td>
                                             <td class="text-end">${{ "{:,.2f}".format(item.annual_cost) }}</td>
+                                            <td>{{ "One-time" if item.is_one_time else "Annual" }}</td>
+                                            <td>{{ "{:.1f}%".format(item.growth_rate * 100) if item.growth_rate else "Scenario" }}</td>
+                                            <td>
+                                                {% if item.age_initiated %}
+                                                    Age {{ item.age_initiated }} 
+                                                    {% if item.age_through %}
+                                                        through {{ item.age_through }}
+                                                    {% else %}
+                                                        until end
+                                                    {% endif %}
+                                                {% else %}
+                                                    {% if item.is_one_time %}
+                                                        Year {{ item.start_year }}
+                                                    {% else %}
+                                                        Year {{ item.start_year }}
+                                                        {% if item.duration_years %}
+                                                            for {{ item.duration_years }} years
+                                                        {% else %}
+                                                            until end
+                                                        {% endif %}
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
                                             <td class="text-center">
                                                 <form method="POST" action="{{ url_for('healthcare.delete_item', evaluee_id=evaluee.id, scenario_id=scenario.id, item_id=item.id) }}"
                                                       style="display: inline;">
@@ -70,11 +142,6 @@
                                             </td>
                                         </tr>
                                     {% endfor %}
-                                    <tr class="table-info">
-                                        <td><strong>Total Annual Costs:</strong></td>
-                                        <td class="text-end"><strong>${{ "{:,.2f}".format(scenario.medical_items|sum(attribute='annual_cost')) }}</strong></td>
-                                        <td></td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>

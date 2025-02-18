@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ scenario.scenario_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Edit Household Services Scenario</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="scenario_name" class="form-label">Scenario Name</label>
+                            <input type="text" class="form-control" id="scenario_name" name="scenario_name" 
+                                   value="{{ scenario.scenario_name }}" required>
+                            <div class="form-text">Enter a descriptive name for this scenario</div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="area_wage_adjustment" class="form-label">Area Wage Adjustment (%)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="area_wage_adjustment" 
+                                           name="area_wage_adjustment" step="0.1" 
+                                           value="{{ "%.1f"|format(scenario.area_wage_adjustment * 100) }}" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="form-text">Adjustment factor for local wage rates (e.g., 121.0 for 21% higher)</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="reduction_percentage" class="form-label">Reduction Percentage (%)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="reduction_percentage" 
+                                           name="reduction_percentage" step="0.1" 
+                                           value="{{ "%.1f"|format(scenario.reduction_percentage * 100) }}" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="form-text">Percentage reduction in household services capacity</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="growth_rate" class="form-label">Growth Rate (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="growth_rate" name="growth_rate" 
+                                       step="0.1" value="{{ "%.1f"|format(scenario.growth_rate * 100) }}" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Annual growth rate for household services values</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="discount_rate" class="form-label">Discount Rate (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="discount_rate" name="discount_rate" 
+                                       step="0.1" value="{{ "%.1f"|format(scenario.discount_rate * 100) }}" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Rate used to calculate present value</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('household.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                               class="btn btn-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h4>Current Stages</h4>
+                </div>
+                <div class="card-body">
+                    {% if scenario.stages %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Stage</th>
+                                        <th>Years</th>
+                                        <th>Annual Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stage in scenario.stages|sort(attribute='stage_number') %}
+                                        <tr>
+                                            <td>{{ stage.stage_number }}</td>
+                                            <td>{{ stage.years }}</td>
+                                            <td>${{ "{:,.2f}".format(stage.annual_value) }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <a href="{{ url_for('household.manage_stages', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                               class="btn btn-primary">
+                                <i class="fas fa-tasks"></i> Manage Stages
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            No stages have been added to this scenario yet.
+                            <a href="{{ url_for('household.manage_stages', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                               class="alert-link">Add stages</a>
+                            to complete the calculation.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

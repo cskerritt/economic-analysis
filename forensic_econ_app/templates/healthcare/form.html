@@ -43,6 +43,7 @@
                                     <option value="nominal">Nominal</option>
                                     <option value="real">Real</option>
                                     <option value="net">Net Discount</option>
+                                    <option value="none">No Discounting</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -147,6 +148,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const growthRateCustomInput = document.getElementById('growth_rate_custom');
     const partialOffsetCheckbox = document.getElementById('partial_offset');
     const totalOffsetCheckbox = document.getElementById('total_offset');
+    const discountMethodSelect = document.getElementById('discount_method');
+    const discountRateInput = document.getElementById('discount_rate');
     
     // Toggle custom growth rate input visibility
     function updateGrowthRateVisibility() {
@@ -162,12 +165,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Handle discount method changes
+    function handleDiscountMethodChange() {
+        const isNoDiscounting = discountMethodSelect.value === 'none';
+        discountRateInput.disabled = isNoDiscounting;
+        if (isNoDiscounting) {
+            discountRateInput.value = '0.0';
+        } else if (discountRateInput.value === '0.0') {
+            discountRateInput.value = '5.0';
+        }
+    }
+    
     growthMethodSelect.addEventListener('change', updateGrowthRateVisibility);
     partialOffsetCheckbox.addEventListener('change', handleOffsetChange);
     totalOffsetCheckbox.addEventListener('change', handleOffsetChange);
+    discountMethodSelect.addEventListener('change', handleDiscountMethodChange);
     
     // Initial setup
     updateGrowthRateVisibility();
+    handleDiscountMethodChange();
 });
 </script>
 {% endblock %}

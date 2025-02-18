@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Pension Analysis - {{ evaluee.first_name }} {{ evaluee.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Pension Analysis - {{ evaluee.first_name }} {{ evaluee.last_name }}</h2>
+    
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Create New Pension Scenario</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('pension.create_scenario', evaluee_id=evaluee.id) }}" id="pensionForm">
+                        <div class="mb-3">
+                            <label for="scenario_name" class="form-label">Scenario Name</label>
+                            <input type="text" class="form-control" id="scenario_name" name="scenario_name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="calculation_method" class="form-label">Calculation Method</label>
+                            <select class="form-select" id="calculation_method" name="calculation_method" required>
+                                <option value="">Select a method</option>
+                                <option value="contributions">Lost Contributions</option>
+                                <option value="payments">Lost Pension Payments</option>
+                            </select>
+                            <div class="form-text">Choose between calculating lost contributions or lost pension payments</div>
+                        </div>
+                        
+                        <!-- Common Fields -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="growth_rate" class="form-label">Annual Growth Rate (%)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="growth_rate" name="growth_rate" 
+                                           step="0.1" value="2.0" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="discount_rate" class="form-label">Discount Rate (%)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="discount_rate" name="discount_rate" 
+                                           step="0.1" value="4.0" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lost Contributions Fields -->
+                        <div id="contributionsFields" style="display: none;">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="years_to_retirement" class="form-label">Years to Retirement</label>
+                                    <input type="number" class="form-control" id="years_to_retirement" 
+                                           name="years_to_retirement" min="1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="annual_contribution" class="form-label">Annual Contribution ($)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="annual_contribution" 
+                                               name="annual_contribution" step="0.01">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lost Pension Payments Fields -->
+                        <div id="paymentsFields" style="display: none;">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="retirement_age" class="form-label">Retirement Age</label>
+                                    <input type="number" class="form-control" id="retirement_age" 
+                                           name="retirement_age" min="1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="life_expectancy" class="form-label">Life Expectancy</label>
+                                    <input type="number" class="form-control" id="life_expectancy" 
+                                           name="life_expectancy" min="1">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="annual_pension_benefit" class="form-label">Annual Pension Benefit ($)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="annual_pension_benefit" 
+                                           name="annual_pension_benefit" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Create Scenario</button>
+                        <a href="{{ url_for('evaluee.view', evaluee_id=evaluee.id) }}" class="btn btn-secondary">
+                            Back to Evaluee
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Existing Scenarios</h4>
+                </div>
+                <div class="card-body">
+                    {% if scenarios %}
+                        <div class="list-group">
+                            {% for scenario in scenarios %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <a href="{{ url_for('pension.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                                               class="text-decoration-none">
+                                                {{ scenario.scenario_name }}
+                                                <small class="text-muted d-block">
+                                                    Method: {{ scenario.calculation_method|title }}
+                                                    <br>
+                                                    PV: ${{ "{:,.2f}".format(scenario.present_value) }}
+                                                </small>
+                                            </a>
+                                        </div>
+                                        <form action="{{ url_for('pension.delete_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                                              method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" 
+                                                    onclick="return confirm('Are you sure you want to delete this scenario?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No pension scenarios created yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.getElementById('calculation_method').addEventListener('change', function() {
+    const contributionsFields = document.getElementById('contributionsFields');
+    const paymentsFields = document.getElementById('paymentsFields');
+    
+    if (this.value === 'contributions') {
+        contributionsFields.style.display = 'block';
+        paymentsFields.style.display = 'none';
+        
+        // Make contributions fields required
+        document.getElementById('years_to_retirement').required = true;
+        document.getElementById('annual_contribution').required = true;
+        
+        // Make payments fields not required
+        document.getElementById('retirement_age').required = false;
+        document.getElementById('life_expectancy').required = false;
+        document.getElementById('annual_pension_benefit').required = false;
+    } else if (this.value === 'payments') {
+        contributionsFields.style.display = 'none';
+        paymentsFields.style.display = 'block';
+        
+        // Make payments fields required
+        document.getElementById('retirement_age').required = true;
+        document.getElementById('life_expectancy').required = true;
+        document.getElementById('annual_pension_benefit').required = true;
+        
+        // Make contributions fields not required
+        document.getElementById('years_to_retirement').required = false;
+        document.getElementById('annual_contribution').required = false;
+    } else {
+        contributionsFields.style.display = 'none';
+        paymentsFields.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
+{% endblock %} 

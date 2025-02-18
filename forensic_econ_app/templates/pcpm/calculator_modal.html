@@ -1,0 +1,135 @@
+<!-- Personal Consumption/Maintenance Calculator Modal -->
+<div class="modal fade" id="pcpmCalculatorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Personal Consumption/Maintenance Calculator</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <p class="mb-0">
+                        This calculator uses Eric Christensen's 2022 methodology to compute Personal Consumption (PC) 
+                        or Personal Maintenance (PM) percentages for wrongful death cases.
+                    </p>
+                </div>
+
+                <form id="pcpmCalculatorForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="pcpm_income" class="form-label">Annual Household Income ($)</label>
+                            <input type="number" class="form-control" id="pcpm_income" name="income" 
+                                   step="0.01" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pcpm_sex" class="form-label">Decedent's Sex</label>
+                            <select class="form-select" id="pcpm_sex" name="sex" required>
+                                <option value="">Select...</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="pcpm_household_size" class="form-label">Household Size</label>
+                            <select class="form-select" id="pcpm_household_size" name="household_size" required>
+                                <option value="">Select...</option>
+                                <option value="1">1 person</option>
+                                <option value="2">2 people</option>
+                                <option value="3">3 people</option>
+                                <option value="4">4 people</option>
+                                <option value="5">5 or more people</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="pcpm_measure" class="form-label">Measure</label>
+                            <select class="form-select" id="pcpm_measure" name="measure" required>
+                                <option value="PC">Personal Consumption (PC)</option>
+                                <option value="PM">Personal Maintenance (PM)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="pcpm_estimate" class="form-label">Estimate Type</label>
+                            <select class="form-select" id="pcpm_estimate" name="estimate" required>
+                                <option value="high">High</option>
+                                <option value="low">Low</option>
+                                <option value="midpoint">Midpoint</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="pcpmResult" class="alert alert-success" style="display: none;">
+                        <h6 class="alert-heading">Calculation Result</h6>
+                        <p class="mb-0" id="pcpmResultText"></p>
+                    </div>
+
+                    <div id="pcpmError" class="alert alert-danger" style="display: none;">
+                        <h6 class="alert-heading">Error</h6>
+                        <p class="mb-0" id="pcpmErrorText"></p>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="calculatePCPM">Calculate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this to your JavaScript section -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('pcpmCalculatorForm');
+    const calculateBtn = document.getElementById('calculatePCPM');
+    const resultDiv = document.getElementById('pcpmResult');
+    const resultText = document.getElementById('pcpmResultText');
+    const errorDiv = document.getElementById('pcpmError');
+    const errorText = document.getElementById('pcpmErrorText');
+
+    calculateBtn.addEventListener('click', function() {
+        // Reset display
+        resultDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+
+        // Gather form data
+        const formData = {
+            income: parseFloat(document.getElementById('pcpm_income').value),
+            sex: document.getElementById('pcpm_sex').value,
+            household_size: parseInt(document.getElementById('pcpm_household_size').value),
+            measure: document.getElementById('pcpm_measure').value,
+            estimate: document.getElementById('pcpm_estimate').value
+        };
+
+        // Send calculation request
+        fetch('/pcpm/calculate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultText.textContent = data.message;
+                resultDiv.style.display = 'block';
+                
+                // Update the personal consumption percentage input if it exists
+                const pcInput = document.getElementById('personal_percentage');
+                if (pcInput) {
+                    pcInput.value = data.percentage;
+                }
+            } else {
+                errorText.textContent = data.message;
+                errorDiv.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            errorText.textContent = 'An error occurred during calculation.';
+            errorDiv.style.display = 'block';
+        });
+    });
+});</script> 

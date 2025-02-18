@@ -3,6 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
+import numpy as np
+from decimal import Decimal
+from typing import List
 
 db = SQLAlchemy()
 
@@ -119,12 +122,64 @@ class HealthcareScenario(db.Model):
     medical_items = db.relationship('MedicalItem', backref='scenario', lazy=True, cascade='all, delete-orphan')
     evaluee = db.relationship('Evaluee', backref='healthcare_scenarios', lazy=True)
 
+    def compute_future_medical_costs(self, base_year: int, projection_years: int, inflation_rate: Decimal) -> List[Decimal]:
+        """
+        Compute future medical costs for each year in the projection period.
+        
+        Args:
+            base_year: The starting year for calculations (e.g., 2023)
+            projection_years: Number of years to project into the future
+            inflation_rate: Annual inflation rate as a decimal (e.g., 0.03 for 3%)
+            
+        Returns:
+            List of projected costs for each year
+        """
+        yearly_costs = [Decimal('0')] * projection_years
+        
+        for item in self.medical_items:
+            # Convert to Decimal for precise calculations
+            annual_cost = Decimal(str(item.annual_cost))
+            
+            # Determine the start and end years for this item
+            start_idx = item.start_year - 1  # Convert to 0-based index
+            if item.duration_years:
+                end_idx = start_idx + item.duration_years
+            else:
+                end_idx = projection_years
+            
+            # Ensure we don't exceed the projection period
+            end_idx = min(end_idx, projection_years)
+            
+            if start_idx >= projection_years:
+                continue  # Skip if the item starts after our projection period
+            
+            if item.is_one_time:
+                # For one-time costs, only apply to the start year
+                if start_idx < projection_years:
+                    # Apply inflation for the years between base_year and when the cost occurs
+                    inflation_factor = (1 + inflation_rate) ** start_idx
+                    yearly_costs[start_idx] += annual_cost * inflation_factor
+            else:
+                # For recurring costs, apply to each year in the duration
+                for year in range(start_idx, end_idx):
+                    # Apply inflation for each year from the base year
+                    inflation_factor = (1 + inflation_rate) ** year
+                    yearly_costs[year] += annual_cost * inflation_factor
+        
+        return yearly_costs
+
 class MedicalItem(db.Model):
     """Model for storing medical items within a healthcare scenario."""
     id = db.Column(db.Integer, primary_key=True)
     scenario_id = db.Column(db.Integer, db.ForeignKey('healthcare_scenario.id'), nullable=False)
     label = db.Column(db.String(100), nullable=False)
     annual_cost = db.Column(db.Numeric(10, 2), nullable=False)
+    is_one_time = db.Column(db.Boolean, default=False)  # Whether this is a one-time cost
+    start_year = db.Column(db.Integer, default=1)  # Year to start the cost (1-based)
+    duration_years = db.Column(db.Integer)  # Duration in years (NULL means until end of projection)
+    growth_rate = db.Column(db.Numeric(10, 4))  # Individual growth rate for this item (NULL means use scenario rate)
+    age_initiated = db.Column(db.Numeric(10, 2))  # Age when the cost starts
+    age_through = db.Column(db.Numeric(10, 2))  # Age when the cost ends (NULL means until end)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class CPIRate(db.Model):
@@ -143,4 +198,98 @@ class CPIRate(db.Model):
         return float(rate.rate) if rate else None
 
     def __repr__(self):
-        return f'<CPIRate {self.category}: {self.rate}%>' 
+        return f'<CPIRate {self.category}: {self.rate}%>'
+
+class HouseholdServicesScenario(db.Model):
+    """Model for storing household services calculation scenarios."""
+    id = db.Column(db.Integer, primary_key=True)
+    evaluee_id = db.Column(db.Integer, db.ForeignKey('evaluee.id'), nullable=False)
+    scenario_name = db.Column(db.String(100), nullable=False)
+    area_wage_adjustment = db.Column(db.Numeric(10, 4), nullable=False)
+    reduction_percentage = db.Column(db.Numeric(10, 4), nullable=False)
+    growth_rate = db.Column(db.Numeric(10, 4), nullable=False)
+    discount_rate = db.Column(db.Numeric(10, 4), nullable=False)
+    present_value = db.Column(db.Numeric(15, 2))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship with Evaluee and Stages
+    evaluee = db.relationship('Evaluee', backref='household_services_scenarios', lazy=True)
+    stages = db.relationship('HouseholdServiceStage', backref='scenario', lazy=True, cascade='all, delete-orphan')
+    
+    def calculate_present_value(self):
+        """Calculate the present value of household services using the staged valuation model."""
+        if not self.stages:
+            return Decimal('0.00')
+        
+        total_pv = Decimal('0.0')
+        
+        # Sort stages by stage_number
+        for stage in sorted(self.stages, key=lambda x: x.stage_number):
+            for local_year in range(1, stage.years + 1):
+                grown_value = stage.annual_value * (
+                    (Decimal('1.0') + self.growth_rate) ** (local_year - 1)
+                )
+                adjusted_value = grown_value * self.area_wage_adjustment * self.reduction_percentage
+                present_value = adjusted_value / (
+                    (Decimal('1.0') + self.discount_rate) ** local_year
+                )
+                total_pv += present_value
+        
+        return total_pv.quantize(Decimal('0.01'))
+
+class HouseholdServiceStage(db.Model):
+    """Model for storing stages within a household services scenario."""
+    id = db.Column(db.Integer, primary_key=True)
+    scenario_id = db.Column(db.Integer, db.ForeignKey('household_services_scenario.id'), nullable=False)
+    stage_number = db.Column(db.Integer, nullable=False)
+    years = db.Column(db.Integer, nullable=False)
+    annual_value = db.Column(db.Numeric(10, 2), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class PensionScenario(db.Model):
+    """Model for storing pension calculation scenarios."""
+    id = db.Column(db.Integer, primary_key=True)
+    evaluee_id = db.Column(db.Integer, db.ForeignKey('evaluee.id'), nullable=False)
+    scenario_name = db.Column(db.String(100), nullable=False)
+    calculation_method = db.Column(db.String(20), nullable=False)  # 'contributions' or 'payments'
+    
+    # Common fields
+    growth_rate = db.Column(db.Numeric(10, 4), nullable=False)
+    discount_rate = db.Column(db.Numeric(10, 4), nullable=False)
+    present_value = db.Column(db.Numeric(15, 2))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Lost Contributions fields
+    years_to_retirement = db.Column(db.Integer)
+    annual_contribution = db.Column(db.Numeric(10, 2))
+    
+    # Lost Pension Payments fields
+    retirement_age = db.Column(db.Integer)
+    life_expectancy = db.Column(db.Integer)
+    annual_pension_benefit = db.Column(db.Numeric(10, 2))
+    
+    # Relationship with Evaluee
+    evaluee = db.relationship('Evaluee', backref='pension_scenarios', lazy=True)
+    
+    def calculate_present_value(self):
+        """Calculate the present value of pension benefits."""
+        if self.calculation_method == 'contributions':
+            years_array = np.arange(1, self.years_to_retirement + 1)
+            annual_contribution = float(self.annual_contribution)
+            growth_rate = float(self.growth_rate)
+            discount_rate = float(self.discount_rate)
+            
+            pv = np.sum((annual_contribution * (1 + growth_rate) ** years_array) / 
+                       (1 + discount_rate) ** years_array)
+        
+        elif self.calculation_method == 'payments':
+            years_array = np.arange(self.retirement_age, self.life_expectancy + 1)
+            pension_benefit = float(self.annual_pension_benefit)
+            growth_rate = float(self.growth_rate)
+            discount_rate = float(self.discount_rate)
+            
+            pv = np.sum((pension_benefit * (1 + growth_rate) ** (years_array - self.retirement_age)) / 
+                       (1 + discount_rate) ** (years_array - self.retirement_age))
+        
+        self.present_value = Decimal(str(pv))
+        return self.present_value 

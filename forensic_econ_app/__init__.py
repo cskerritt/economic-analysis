@@ -33,6 +33,8 @@ def create_app(config_name=None):
     from forensic_econ_app.routes.settings import settings
     from forensic_econ_app.routes.health import bp as health_bp
     from forensic_econ_app.routes.auth import bp as auth_bp
+    from forensic_econ_app.routes.household import household
+    from forensic_econ_app.routes.pcpm import bp as pcpm_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(evaluee.bp)
@@ -43,5 +45,7 @@ def create_app(config_name=None):
     app.register_blueprint(healthcare)
     app.register_blueprint(settings)
     app.register_blueprint(health_bp)
+    app.register_blueprint(household)
+    app.register_blueprint(pcpm_bp)
     
     return app 

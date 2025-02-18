@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ scenario.scenario_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Edit Pension Scenario</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="scenario_name" class="form-label">Scenario Name</label>
+                            <input type="text" class="form-control" id="scenario_name" name="scenario_name" 
+                                   value="{{ scenario.scenario_name }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="calculation_method" class="form-label">Calculation Method</label>
+                            <select class="form-select" id="calculation_method" name="calculation_method" required>
+                                <option value="contributions" {% if scenario.calculation_method == 'contributions' %}selected{% endif %}>
+                                    Lost Contributions
+                                </option>
+                                <option value="payments" {% if scenario.calculation_method == 'payments' %}selected{% endif %}>
+                                    Lost Pension Payments
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="growth_rate" class="form-label">Annual Growth Rate (%)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="growth_rate" name="growth_rate" 
+                                           step="0.1" value="{{ "%.1f"|format(scenario.growth_rate * 100) }}" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="discount_rate" class="form-label">Discount Rate (%)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="discount_rate" name="discount_rate" 
+                                           step="0.1" value="{{ "%.1f"|format(scenario.discount_rate * 100) }}" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lost Contributions Fields -->
+                        <div id="contributionsFields" style="display: {% if scenario.calculation_method == 'contributions' %}block{% else %}none{% endif %}">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="years_to_retirement" class="form-label">Years to Retirement</label>
+                                    <input type="number" class="form-control" id="years_to_retirement" 
+                                           name="years_to_retirement" min="1" value="{{ scenario.years_to_retirement or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="annual_contribution" class="form-label">Annual Contribution ($)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="annual_contribution" 
+                                               name="annual_contribution" step="0.01" 
+                                               value="{{ scenario.annual_contribution or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lost Pension Payments Fields -->
+                        <div id="paymentsFields" style="display: {% if scenario.calculation_method == 'payments' %}block{% else %}none{% endif %}">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="retirement_age" class="form-label">Retirement Age</label>
+                                    <input type="number" class="form-control" id="retirement_age" 
+                                           name="retirement_age" min="1" value="{{ scenario.retirement_age or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="life_expectancy" class="form-label">Life Expectancy</label>
+                                    <input type="number" class="form-control" id="life_expectancy" 
+                                           name="life_expectancy" min="1" value="{{ scenario.life_expectancy or '' }}">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="annual_pension_benefit" class="form-label">Annual Pension Benefit ($)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="annual_pension_benefit" 
+                                           name="annual_pension_benefit" step="0.01" 
+                                           value="{{ scenario.annual_pension_benefit or '' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('pension.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                               class="btn btn-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.getElementById('calculation_method').addEventListener('change', function() {
+    const contributionsFields = document.getElementById('contributionsFields');
+    const paymentsFields = document.getElementById('paymentsFields');
+    
+    if (this.value === 'contributions') {
+        contributionsFields.style.display = 'block';
+        paymentsFields.style.display = 'none';
+        
+        // Make contributions fields required
+        document.getElementById('years_to_retirement').required = true;
+        document.getElementById('annual_contribution').required = true;
+        
+        // Make payments fields not required
+        document.getElementById('retirement_age').required = false;
+        document.getElementById('life_expectancy').required = false;
+        document.getElementById('annual_pension_benefit').required = false;
+    } else if (this.value === 'payments') {
+        contributionsFields.style.display = 'none';
+        paymentsFields.style.display = 'block';
+        
+        // Make payments fields required
+        document.getElementById('retirement_age').required = true;
+        document.getElementById('life_expectancy').required = true;
+        document.getElementById('annual_pension_benefit').required = true;
+        
+        // Make contributions fields not required
+        document.getElementById('years_to_retirement').required = false;
+        document.getElementById('annual_contribution').required = false;
+    }
+});
+</script>
+{% endblock %}
+{% endblock %} 

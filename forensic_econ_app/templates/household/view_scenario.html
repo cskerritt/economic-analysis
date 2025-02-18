@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}{{ scenario.scenario_name }} - Household Services{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ scenario.scenario_name }}</h2>
+        <div>
+            <a href="{{ url_for('household.manage_stages', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+               class="btn btn-primary">
+                <i class="fas fa-tasks"></i> Manage Stages
+            </a>
+            <a href="{{ url_for('household.edit_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+               class="btn btn-secondary">
+                <i class="fas fa-edit"></i> Edit Scenario
+            </a>
+            <a href="{{ url_for('household.export_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+               class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Export to Excel
+            </a>
+            <form action="{{ url_for('household.delete_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                  method="POST" class="d-inline">
+                <button type="submit" class="btn btn-danger" 
+                        onclick="return confirm('Are you sure you want to delete this scenario?')">
+                    <i class="fas fa-trash"></i> Delete Scenario
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Scenario Details</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-6">Area Wage Adjustment</dt>
+                        <dd class="col-sm-6">{{ "%.1f"|format(scenario.area_wage_adjustment * 100) }}%</dd>
+                        
+                        <dt class="col-sm-6">Reduction Percentage</dt>
+                        <dd class="col-sm-6">{{ "%.1f"|format(scenario.reduction_percentage * 100) }}%</dd>
+                        
+                        <dt class="col-sm-6">Growth Rate</dt>
+                        <dd class="col-sm-6">{{ "%.1f"|format(scenario.growth_rate * 100) }}%</dd>
+                        
+                        <dt class="col-sm-6">Discount Rate</dt>
+                        <dd class="col-sm-6">{{ "%.1f"|format(scenario.discount_rate * 100) }}%</dd>
+                        
+                        <dt class="col-sm-6">Total Years</dt>
+                        <dd class="col-sm-6">{{ scenario.stages|sum(attribute='years') }}</dd>
+                    </dl>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Stages</h4>
+                </div>
+                <div class="card-body">
+                    {% if scenario.stages %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Stage</th>
+                                        <th>Years</th>
+                                        <th>Annual Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stage in scenario.stages|sort(attribute='stage_number') %}
+                                        <tr>
+                                            <td>{{ stage.stage_number }}</td>
+                                            <td>{{ stage.years }}</td>
+                                            <td>${{ "{:,.2f}".format(stage.annual_value) }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            No stages have been added to this scenario yet.
+                            <a href="{{ url_for('household.manage_stages', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                               class="alert-link">Add stages</a>
+                            to complete the calculation.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Present Value Calculation</h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <h3 class="text-primary mb-4">${{ "{:,.2f}".format(scenario.present_value or 0) }}</h3>
+                    </div>
+                    
+                    <div class="calculation-steps">
+                        <h5>Calculation Steps:</h5>
+                        <ol>
+                            <li>Calculate present value for each year based on stage values</li>
+                            <li>Apply annual growth rate of {{ "%.1f"|format(scenario.growth_rate * 100) }}%</li>
+                            <li>Apply area wage adjustment of {{ "%.1f"|format(scenario.area_wage_adjustment * 100) }}%</li>
+                            <li>Apply reduction percentage of {{ "%.1f"|format(scenario.reduction_percentage * 100) }}%</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            {% if scenario.stages %}
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Annual Breakdown</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Stage</th>
+                                        <th>Stage Year</th>
+                                        <th class="text-end">Base Value</th>
+                                        <th class="text-end">Grown Value</th>
+                                        <th class="text-end">Adjusted Value</th>
+                                        <th class="text-end">Present Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set ns = namespace(total_base=Decimal('0'), total_grown=Decimal('0'), total_adjusted=Decimal('0'), total_present=Decimal('0')) %}
+                                    {% for stage in scenario.stages|sort(attribute='stage_number') %}
+                                        {% for local_year in range(1, stage.years + 1) %}
+                                            {% set growth_factor = (Decimal('1') + scenario.growth_rate) ** (local_year - 1) %}
+                                            {% set grown_value = stage.annual_value * growth_factor %}
+                                            {% set adjusted_value = grown_value * scenario.area_wage_adjustment * scenario.reduction_percentage %}
+                                            {% set present_value = adjusted_value / ((Decimal('1') + scenario.discount_rate) ** local_year) %}
+                                            
+                                            {% set ns.total_base = ns.total_base + stage.annual_value %}
+                                            {% set ns.total_grown = ns.total_grown + grown_value %}
+                                            {% set ns.total_adjusted = ns.total_adjusted + adjusted_value %}
+                                            {% set ns.total_present = ns.total_present + present_value %}
+                                            
+                                            <tr>
+                                                <td>{{ stage.stage_number }}</td>
+                                                <td>{{ local_year }}</td>
+                                                <td class="text-end">${{ "{:,.2f}".format(stage.annual_value) }}</td>
+                                                <td class="text-end">${{ "{:,.2f}".format(grown_value) }}</td>
+                                                <td class="text-end">${{ "{:,.2f}".format(adjusted_value) }}</td>
+                                                <td class="text-end">${{ "{:,.2f}".format(present_value) }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    <tr class="table-info">
+                                        <td colspan="2"><strong>Total</strong></td>
+                                        <td class="text-end"><strong>${{ "{:,.2f}".format(ns.total_base) }}</strong></td>
+                                        <td class="text-end"><strong>${{ "{:,.2f}".format(ns.total_grown) }}</strong></td>
+                                        <td class="text-end"><strong>${{ "{:,.2f}".format(ns.total_adjusted) }}</strong></td>
+                                        <td class="text-end"><strong>${{ "{:,.2f}".format(ns.total_present) }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('household.household_form', evaluee_id=evaluee.id) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Scenarios
+        </a>
+    </div>
+</div>
+{% endblock %} 

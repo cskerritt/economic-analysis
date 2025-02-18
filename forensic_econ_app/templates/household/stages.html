@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Stages - {{ scenario.scenario_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Manage Stages - {{ scenario.scenario_name }}</h2>
+        <div>
+            <a href="{{ url_for('household.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+               class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Scenario
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Add New Stage</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('household.add_stage', evaluee_id=evaluee.id, scenario_id=scenario.id) }}">
+                        <div class="mb-3">
+                            <label for="stage_number" class="form-label">Stage Number</label>
+                            <input type="number" class="form-control" id="stage_number" name="stage_number" 
+                                   min="1" required>
+                            <div class="form-text">Enter the sequential stage number (1, 2, 3, etc.)</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="years" class="form-label">Duration (Years)</label>
+                            <input type="number" class="form-control" id="years" name="years" 
+                                   min="1" required>
+                            <div class="form-text">Number of years this stage lasts</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="annual_value" class="form-label">Annual Value ($)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="annual_value" name="annual_value" 
+                                       step="0.01" required>
+                            </div>
+                            <div class="form-text">Annual value of household services for this stage</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Add Stage</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Current Stages</h4>
+                </div>
+                <div class="card-body">
+                    {% if scenario.stages %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Stage</th>
+                                        <th>Years</th>
+                                        <th>Annual Value</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stage in scenario.stages|sort(attribute='stage_number') %}
+                                        <tr>
+                                            <td>{{ stage.stage_number }}</td>
+                                            <td>{{ stage.years }}</td>
+                                            <td>${{ "{:,.2f}".format(stage.annual_value) }}</td>
+                                            <td>
+                                                <form method="POST" 
+                                                      action="{{ url_for('household.delete_stage', evaluee_id=evaluee.id, scenario_id=scenario.id, stage_id=stage.id) }}" 
+                                                      style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" 
+                                                            onclick="return confirm('Are you sure you want to delete this stage?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            No stages have been added yet. Use the form on the left to add your first stage.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if scenario.stages %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h4>Stage Summary</h4>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-6">Total Years</dt>
+                            <dd class="col-sm-6">{{ scenario.stages|sum(attribute='years') }}</dd>
+                            
+                            <dt class="col-sm-6">Area Wage Adjustment</dt>
+                            <dd class="col-sm-6">{{ "%.1f"|format(scenario.area_wage_adjustment * 100) }}%</dd>
+                            
+                            <dt class="col-sm-6">Reduction Percentage</dt>
+                            <dd class="col-sm-6">{{ "%.1f"|format(scenario.reduction_percentage * 100) }}%</dd>
+                            
+                            <dt class="col-sm-6">Discount Rate</dt>
+                            <dd class="col-sm-6">{{ "%.1f"|format(scenario.discount_rate * 100) }}%</dd>
+                            
+                            <dt class="col-sm-6">Present Value</dt>
+                            <dd class="col-sm-6">${{ "{:,.2f}".format(scenario.present_value or 0) }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
