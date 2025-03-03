@@ -12,73 +12,74 @@
                     <h4 class="mb-0">Add New Medical Cost</h4>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('healthcare.add_item', evaluee_id=evaluee.id, scenario_id=scenario.id) }}">
-                        <div class="mb-3">
-                            <label for="label" class="form-label">Medical Item Description</label>
-                            <input type="text" class="form-control" id="label" name="label" 
-                                   placeholder="e.g., Physical Therapy, Medication, Surgery" required>
-                            <div class="form-text">Enter a descriptive name for the medical cost</div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="annual_cost" class="form-label">Cost ($)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" id="annual_cost" name="annual_cost" 
-                                       step="0.01" min="0" placeholder="0.00" required>
+                    <form method="POST" action="{{ url_for('healthcare.add_item', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="label" class="form-label">Item Label</label>
+                                <input type="text" class="form-control" id="label" name="label" required>
                             </div>
-                            <div class="form-text">Enter the cost (annual or one-time)</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="growth_rate" class="form-label">Growth Rate (%)</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="growth_rate" name="growth_rate" 
-                                       step="0.01" min="0" placeholder="Leave empty to use scenario rate">
-                                <span class="input-group-text">%</span>
+                            <div class="col-md-6">
+                                <label for="category" class="form-label">Category</label>
+                                <select class="form-select" id="category" name="category">
+                                    <option value="Physician Services">Physician Services</option>
+                                    <option value="Therapy Services">Therapy Services</option>
+                                    <option value="Follow-Up">Follow-Up</option>
+                                    <option value="Diagnostics">Diagnostics</option>
+                                    <option value="Medication">Medication</option>
+                                    <option value="Surgical/Interventional Procedures">Surgical/Interventional Procedures</option>
+                                    <option value="Aids for Independence">Aids for Independence</option>
+                                    <option value="Prosthetics & Orthotics">Prosthetics & Orthotics</option>
+                                    <option value="Home Services">Home Services</option>
+                                    <option value="Home Modification & Maintenance">Home Modification & Maintenance</option>
+                                    <option value="Case Management">Case Management</option>
+                                    <option value="Supplies">Supplies</option>
+                                    <option value="Uncategorized">Uncategorized</option>
+                                </select>
                             </div>
-                            <div class="form-text">Individual growth rate for this item (leave empty to use scenario rate)</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="is_one_time" name="is_one_time">
-                                <label class="form-check-label" for="is_one_time">One-time Cost</label>
+                            <div class="col-md-4">
+                                <label for="annual_cost" class="form-label">Annual Cost</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="annual_cost" name="annual_cost" required>
+                                </div>
                             </div>
-                            <div class="form-text">Check if this is a one-time expense rather than recurring annually</div>
+                            <div class="col-md-4">
+                                <label for="growth_rate" class="form-label">Growth Rate (%)</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="growth_rate" name="growth_rate" placeholder="Use scenario rate">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="start_year" class="form-label">Start Year</label>
+                                <input type="number" min="1" class="form-control" id="start_year" name="start_year" value="1">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="duration_years" class="form-label">Duration (Years)</label>
+                                <input type="number" min="1" class="form-control" id="duration_years" name="duration_years" placeholder="Until end">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="interval_years" class="form-label">Interval (Years)</label>
+                                <input type="number" min="1" class="form-control" id="interval_years" name="interval_years" value="1" title="How often the cost occurs (e.g., 3 for every 3 years)">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="age_initiated" class="form-label">Age Initiated</label>
+                                <input type="number" step="0.1" class="form-control" id="age_initiated" name="age_initiated">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="age_through" class="form-label">Age Through</label>
+                                <input type="number" step="0.1" class="form-control" id="age_through" name="age_through">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="is_one_time" name="is_one_time">
+                                    <label class="form-check-label" for="is_one_time">One-time cost</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">Add Item</button>
+                            </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label for="age_initiated" class="form-label">Age Initiated</label>
-                            <input type="number" class="form-control" id="age_initiated" name="age_initiated" 
-                                   min="0" step="0.01" placeholder="Age when cost begins">
-                            <div class="form-text">Age when this cost begins (leave empty to use year-based timing)</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="age_through" class="form-label">Age Through</label>
-                            <input type="number" class="form-control" id="age_through" name="age_through" 
-                                   min="0" step="0.01" placeholder="Age when cost ends">
-                            <div class="form-text">Age when this cost ends (leave empty for entire projection period)</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="start_year" class="form-label">Start Year (Alternative)</label>
-                            <input type="number" class="form-control" id="start_year" name="start_year" 
-                                   min="1" value="1">
-                            <div class="form-text">Alternative: Year to start this cost (1 = first year)</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="duration_years" class="form-label">Duration Years (Alternative)</label>
-                            <input type="number" class="form-control" id="duration_years" name="duration_years" 
-                                   min="1" placeholder="Number of years">
-                            <div class="form-text">Alternative: Number of years this cost will continue</div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-plus-circle"></i> Add Medical Cost
-                        </button>
                     </form>
                 </div>
             </div>
@@ -92,52 +93,54 @@
                 <div class="card-body">
                     {% if scenario.medical_items %}
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>Description</th>
-                                        <th class="text-end">Cost</th>
-                                        <th>Type</th>
-                                        <th>Growth</th>
+                                        <th>Category</th>
+                                        <th>Label</th>
+                                        <th>Annual Cost</th>
+                                        <th>Growth Rate</th>
+                                        <th>One-time</th>
+                                        <th>Start Year</th>
                                         <th>Duration</th>
-                                        <th class="text-center">Actions</th>
+                                        <th>Interval</th>
+                                        <th>Age Range</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for item in scenario.medical_items %}
                                         <tr>
+                                            <td>{{ item.category }}</td>
                                             <td>{{ item.label }}</td>
-                                            <td class="text-end">${{ "{:,.2f}".format(item.annual_cost) }}</td>
-                                            <td>{{ "One-time" if item.is_one_time else "Annual" }}</td>
-                                            <td>{{ "{:.1f}%".format(item.growth_rate * 100) if item.growth_rate else "Scenario" }}</td>
+                                            <td>${{ "%.2f"|format(item.annual_cost|float) }}</td>
                                             <td>
-                                                {% if item.age_initiated %}
-                                                    Age {{ item.age_initiated }} 
-                                                    {% if item.age_through %}
-                                                        through {{ item.age_through }}
-                                                    {% else %}
-                                                        until end
-                                                    {% endif %}
+                                                {% if item.growth_rate %}
+                                                    {{ "%.2f"|format(item.growth_rate|float * 100) }}%
                                                 {% else %}
-                                                    {% if item.is_one_time %}
-                                                        Year {{ item.start_year }}
-                                                    {% else %}
-                                                        Year {{ item.start_year }}
-                                                        {% if item.duration_years %}
-                                                            for {{ item.duration_years }} years
-                                                        {% else %}
-                                                            until end
-                                                        {% endif %}
-                                                    {% endif %}
+                                                    Scenario Rate
                                                 {% endif %}
                                             </td>
-                                            <td class="text-center">
-                                                <form method="POST" action="{{ url_for('healthcare.delete_item', evaluee_id=evaluee.id, scenario_id=scenario.id, item_id=item.id) }}"
-                                                      style="display: inline;">
-                                                    <button type="submit" class="btn btn-sm btn-danger" 
-                                                            onclick="return confirm('Are you sure you want to delete this medical cost?')">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
+                                            <td>{{ "Yes" if item.is_one_time else "No" }}</td>
+                                            <td>{{ item.start_year or 1 }}</td>
+                                            <td>
+                                                {% if item.duration_years %}
+                                                    {{ item.duration_years }} years
+                                                {% else %}
+                                                    Until end
+                                                {% endif %}
+                                            </td>
+                                            <td>Every {{ item.interval_years }} year{{ "s" if item.interval_years != 1 }}</td>
+                                            <td>
+                                                {% if item.age_initiated or item.age_through %}
+                                                    {{ item.age_initiated|default('Start') }} - {{ item.age_through|default('End') }}
+                                                {% else %}
+                                                    Full range
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <form method="POST" action="{{ url_for('healthcare.delete_item', evaluee_id=evaluee.id, scenario_id=scenario.id, item_id=item.id) }}" style="display: inline;">
+                                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this item?')">Delete</button>
                                                 </form>
                                             </td>
                                         </tr>

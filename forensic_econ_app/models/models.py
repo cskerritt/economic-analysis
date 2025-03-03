@@ -169,18 +169,19 @@ class HealthcareScenario(db.Model):
         return yearly_costs
 
 class MedicalItem(db.Model):
-    """Model for storing medical items within a healthcare scenario."""
+    """Medical item or service in a healthcare scenario."""
     id = db.Column(db.Integer, primary_key=True)
-    scenario_id = db.Column(db.Integer, db.ForeignKey('healthcare_scenario.id'), nullable=False)
+    scenario_id = db.Column(db.Integer, db.ForeignKey('healthcare_scenario.id', ondelete='CASCADE'), nullable=False)
     label = db.Column(db.String(100), nullable=False)
     annual_cost = db.Column(db.Numeric(10, 2), nullable=False)
-    is_one_time = db.Column(db.Boolean, default=False)  # Whether this is a one-time cost
-    start_year = db.Column(db.Integer, default=1)  # Year to start the cost (1-based)
-    duration_years = db.Column(db.Integer)  # Duration in years (NULL means until end of projection)
-    growth_rate = db.Column(db.Numeric(10, 4))  # Individual growth rate for this item (NULL means use scenario rate)
-    age_initiated = db.Column(db.Numeric(10, 2))  # Age when the cost starts
-    age_through = db.Column(db.Numeric(10, 2))  # Age when the cost ends (NULL means until end)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_one_time = db.Column(db.Boolean, default=False)
+    growth_rate = db.Column(db.Numeric(5, 4))  # If null, use scenario rate
+    age_initiated = db.Column(db.Numeric(5, 2))  # Age when cost begins
+    age_through = db.Column(db.Numeric(5, 2))  # Age when cost ends
+    start_year = db.Column(db.Integer)  # Year when cost begins (1-based)
+    duration_years = db.Column(db.Integer)  # Number of years cost continues
+    category = db.Column(db.String(100), default='Uncategorized')  # Category of medical service
+    interval_years = db.Column(db.Integer, default=1)  # Interval between occurrences (e.g., every 3 years)
 
 class CPIRate(db.Model):
     """Model for storing universal CPI rates."""
@@ -199,6 +200,76 @@ class CPIRate(db.Model):
 
     def __repr__(self):
         return f'<CPIRate {self.category}: {self.rate}%>'
+
+class ECECWorkerType(db.Model):
+    """Model for storing ECEC worker type data."""
+    id = db.Column(db.Integer, primary_key=True)
+    worker_type = db.Column(db.String(100), nullable=False, unique=True)
+    wages_and_salaries = db.Column(db.Numeric(10, 2), nullable=False)
+    total_benefits = db.Column(db.Numeric(10, 2), nullable=False)
+    legally_required_benefits = db.Column(db.Numeric(10, 4), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @staticmethod
+    def get_all_types():
+        """Get all worker types."""
+        return [(wt.worker_type, wt.worker_type) for wt in ECECWorkerType.query.all()]
+
+    @staticmethod
+    def get_data(worker_type):
+        """Get data for a specific worker type."""
+        data = ECECWorkerType.query.filter_by(worker_type=worker_type).first()
+        if data:
+            return {
+                'wages_and_salaries': float(data.wages_and_salaries),
+                'total_benefits': float(data.total_benefits),
+                'legally_required_benefits': float(data.legally_required_benefits)
+            }
+        return None
+
+class ECECGeographicRegion(db.Model):
+    """Model for storing ECEC geographic region data."""
+    id = db.Column(db.Integer, primary_key=True)
+    region = db.Column(db.String(100), nullable=False, unique=True)
+    wages_and_salaries = db.Column(db.Numeric(10, 2), nullable=False)
+    total_benefits = db.Column(db.Numeric(10, 2), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @staticmethod
+    def get_all_regions():
+        """Get all geographic regions."""
+        return [(r.region, r.region) for r in ECECGeographicRegion.query.all()]
+
+    @staticmethod
+    def get_data(region):
+        """Get data for a specific region."""
+        data = ECECGeographicRegion.query.filter_by(region=region).first()
+        if data:
+            return {
+                'wages_and_salaries': float(data.wages_and_salaries),
+                'total_benefits': float(data.total_benefits)
+            }
+        return None
+
+class FringeBenefitScenario(db.Model):
+    """Model for storing fringe benefit calculation scenarios."""
+    id = db.Column(db.Integer, primary_key=True)
+    evaluee_id = db.Column(db.Integer, db.ForeignKey('evaluee.id'), nullable=False)
+    scenario_name = db.Column(db.String(100), nullable=False)
+    worker_type = db.Column(db.String(100), nullable=False)
+    annual_salary = db.Column(db.Numeric(10, 2), nullable=False)
+    region = db.Column(db.String(100), nullable=False)
+    inflation_rate = db.Column(db.Numeric(10, 4), nullable=False)
+    years_since_update = db.Column(db.Integer, default=0)
+    adjusted_fringe_percentage = db.Column(db.Numeric(10, 4))
+    fringe_value = db.Column(db.Numeric(15, 2))
+    total_compensation = db.Column(db.Numeric(15, 2))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship with Evaluee
+    evaluee = db.relationship('Evaluee', backref='fringe_benefit_scenarios', lazy=True)
 
 class HouseholdServicesScenario(db.Model):
     """Model for storing household services calculation scenarios."""

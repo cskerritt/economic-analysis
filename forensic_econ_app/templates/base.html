@@ -30,6 +30,7 @@
                             <a class="nav-link" href="{{ url_for('settings.manage_cpi_rates') }}">CPI Rates</a>
                         </li>
                         {% if request.view_args.get('evaluee_id') %}
+                        <!-- Debug info for evaluee_id: {{ request.view_args.get('evaluee_id') }} -->
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('demographics.form', evaluee_id=request.view_args.evaluee_id) }}">Demographics</a>
                         </li>
@@ -48,6 +49,12 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('household.household_form', evaluee_id=request.view_args.evaluee_id) }}">Household Services</a>
                         </li>
+                        <!-- Debug info for fringe benefits link -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'fringe_benefits.form' %}active{% endif %}" 
+                               href="{{ url_for('fringe_benefits.form', evaluee_id=request.view_args.evaluee_id) }}">Fringe Benefits</a>
+                        </li>
+                        <!-- End debug info -->
                         {% endif %}
                     {% endif %}
                 </ul>

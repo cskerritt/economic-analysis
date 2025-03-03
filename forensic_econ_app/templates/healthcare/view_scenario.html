@@ -1,115 +1,141 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Healthcare Scenario: {{ scenario.scenario_name }}</h2>
+<div class="container-fluid">
+    <h1 class="mb-4">Healthcare Scenario: {{ scenario.scenario_name }}</h1>
     
-    <div class="mb-3">
-        <a href="{{ url_for('healthcare.healthcare_form', evaluee_id=evaluee.id) }}" class="btn btn-secondary">Back to Scenarios</a>
-        <a href="{{ url_for('healthcare.manage_items', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="btn btn-primary">Manage Medical Items</a>
-        <a href="{{ url_for('healthcare.edit_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="btn btn-warning">Edit Scenario</a>
-        <a href="{{ url_for('healthcare.export_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="btn btn-success">Export to Excel</a>
-        
-        <form action="{{ url_for('healthcare.delete_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" method="POST" class="d-inline">
-            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this scenario?')">Delete Scenario</button>
-        </form>
-        
-        <form action="{{ url_for('healthcare.duplicate_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" method="POST" class="d-inline">
-            <button type="submit" class="btn btn-info">Duplicate Scenario</button>
-        </form>
+    <!-- Scenario Parameters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Scenario Parameters</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Growth Method:</strong> {{ scenario.growth_method }}</p>
+                    <p><strong>Growth Rate:</strong> 
+                        {% if scenario.growth_method == 'custom' %}
+                            {{ "%.2f"|format(scenario.growth_rate_custom * 100) }}%
+                        {% else %}
+                            {{ "%.2f"|format(results.parameters_used.growth_rate_effective * 100) }}%
+                        {% endif %}
+                    </p>
+                    <p><strong>Discount Method:</strong> {{ scenario.discount_method }}</p>
+                    <p><strong>Discount Rate:</strong> {{ "%.2f"|format(results.parameters_used.discount_rate_effective * 100) }}%</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Projection Years:</strong> {{ scenario.projection_years }}</p>
+                    <p><strong>Partial Offset:</strong> {{ "Yes" if scenario.partial_offset else "No" }}</p>
+                    <p><strong>Total Offset:</strong> {{ "Yes" if scenario.total_offset else "No" }}</p>
+                    <p><strong>Discounting Enabled:</strong> {{ "Yes" if results.parameters_used.discounting_enabled else "No" }}</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    {% if scenario.medical_items %}
+    <!-- Category Tables -->
+    {% for category, table in results.category_tables.items() %}
     <div class="card mb-4">
-        <div class="card-header text-center">
-            <h4>{{ scenario.scenario_name }}</h4>
+        <div class="card-header">
+            <h3>{{ category }}</h3>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered">
+                <table class="table table-striped">
                     <thead>
                         <tr>
                             <th>Year</th>
                             <th>Age</th>
-                            {% for item in scenario.medical_items %}
-                            <th>{{ item.label }}</th>
+                            {% for column in table.keys() %}
+                                {% if column not in ['Year', 'Age', 'Total Future Value', 'Total Present Value'] %}
+                                    <th>{{ column }}</th>
+                                {% endif %}
                             {% endfor %}
-                            <th>Total Cost</th>
-                            <th>Present Value</th>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>2025 Cost:</td>
-                            {% for item in scenario.medical_items %}
-                            <td>${{ "%.2f"|format(item.annual_cost|float) }}</td>
-                            {% endfor %}
-                            <td></td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>Duration (Years)</td>
-                            {% for item in scenario.medical_items %}
-                            <td>{{ "%.2f"|format(item.duration_years|default(1, true)|float) }}</td>
-                            {% endfor %}
-                            <td></td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>Growth Rate:</td>
-                            {% for item in scenario.medical_items %}
-                            <td>{{ "%.2f"|format((item.growth_rate|default(results.parameters_used.growth_rate_effective, true)|float) * 100) }}%</td>
-                            {% endfor %}
-                            <td></td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>Discount Rate:</td>
-                            <td colspan="{{ scenario.medical_items|length }}">{{ "%.2f"|format(results.parameters_used.discount_rate_effective * 100) }}%</td>
-                            <td></td>
-                            <td></td>
+                            <th>Total Future Value</th>
+                            <th>Total Present Value</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item_data in results.items_breakdown[0].yearly_details %}
-                        <tr>
-                            <td>{{ item_data.year }}</td>
-                            <td>{{ "%.2f"|format(evaluee.age + loop.index0) }}</td>
-                            {% for item in scenario.medical_items %}
-                            <td>${{ "%.2f"|format(results.items_breakdown[loop.index0].yearly_details[loop.parent.loop.index0].projected_cost|float) }}</td>
-                            {% endfor %}
-                            {% set total = namespace(value=0) %}
-                            {% set pv = namespace(value=0) %}
-                            {% for item in results.items_breakdown %}
-                            {% set total.value = total.value + item.yearly_details[loop.parent.loop.index0].projected_cost|float %}
-                            {% set pv.value = pv.value + item.yearly_details[loop.parent.loop.index0].present_value|float %}
-                            {% endfor %}
-                            <td>${{ "%.2f"|format(total.value) }}</td>
-                            <td>${{ "%.2f"|format(pv.value) }}</td>
-                        </tr>
+                        {% for year in table['Age'].keys()|sort %}
+                            <tr>
+                                <td>{{ year }}</td>
+                                <td>{{ "%.1f"|format(table['Age'][year]|float) if table['Age'][year] != '—' else '—' }}</td>
+                                {% for column in table.keys() %}
+                                    {% if column not in ['Year', 'Age', 'Total Future Value', 'Total Present Value'] %}
+                                        <td>${{ "%.2f"|format(table[column][year]|float) if table[column][year] else '0.00' }}</td>
+                                    {% endif %}
+                                {% endfor %}
+                                <td>${{ "%.2f"|format(table['Total Future Value'][year]|float) }}</td>
+                                <td>${{ "%.2f"|format(table['Total Present Value'][year]|float) }}</td>
+                            </tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <td></td>
-                            <td>Total:</td>
-                            {% for item in scenario.medical_items %}
-                            <td>${{ "%.2f"|format(results.items_breakdown[loop.index0].item_undiscounted_sum|float) }}</td>
-                            {% endfor %}
-                            <td>${{ "%.2f"|format(results.grand_total_undiscounted|float) }}</td>
-                            <td>${{ "%.2f"|format(results.grand_total_present_value|float) }}</td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         </div>
     </div>
-    {% else %}
-    <div class="alert alert-warning">
-        No medical items have been added to this scenario yet. <a href="{{ url_for('healthcare.manage_items', evaluee_id=evaluee.id, scenario_id=scenario.id) }}">Add medical items</a>
+    {% endfor %}
+
+    <!-- Overall Summary -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Overall Summary by Category</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Total Future Value</th>
+                            <th>Total Present Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for summary in results.category_summaries %}
+                            <tr>
+                                <td>{{ summary.Category }}</td>
+                                <td>${{ "%.2f"|format(summary['Total Future Value']|float) }}</td>
+                                <td>${{ "%.2f"|format(summary['Total Present Value']|float) }}</td>
+                            </tr>
+                        {% endfor %}
+                        <tr class="table-dark">
+                            <td><strong>Grand Total</strong></td>
+                            <td><strong>${{ "%.2f"|format(results.grand_total_undiscounted|float) }}</strong></td>
+                            <td><strong>${{ "%.2f"|format(results.grand_total_present_value|float) }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    {% endif %}
+
+    <!-- Notes -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Notes</h3>
+        </div>
+        <div class="card-body">
+            <p>{{ results.notes }}</p>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="mb-4">
+        <a href="{{ url_for('healthcare.manage_items', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Manage Items
+        </a>
+        <a href="{{ url_for('healthcare.edit_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="btn btn-secondary">
+            <i class="fas fa-cog"></i> Edit Parameters
+        </a>
+        <a href="{{ url_for('healthcare.export_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Export to Excel
+        </a>
+        <form method="POST" action="{{ url_for('healthcare.delete_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" style="display: inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this scenario?')">
+                <i class="fas fa-trash"></i> Delete Scenario
+            </button>
+        </form>
+    </div>
 </div>
 {% endblock %} 

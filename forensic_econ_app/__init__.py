@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from flask_login import LoginManager
 from .models.models import db, User
 from .config.config import config
+import logging
 
 migrate = Migrate()
 login_manager = LoginManager()
@@ -27,6 +28,9 @@ def create_app(config_name=None):
     migrate.init_app(app, db)
     login_manager.init_app(app)
     
+    # Set up logging
+    app.logger.setLevel(logging.DEBUG)
+    
     # Register blueprints
     from .routes import evaluee, demographics, worklife, aef, earnings
     from forensic_econ_app.routes.healthcare import healthcare
@@ -35,6 +39,10 @@ def create_app(config_name=None):
     from forensic_econ_app.routes.auth import bp as auth_bp
     from forensic_econ_app.routes.household import household
     from forensic_econ_app.routes.pcpm import bp as pcpm_bp
+    from forensic_econ_app.routes.fringe_benefits import bp as fringe_benefits_bp
+    from .commands import init_ecec_data
+    
+    app.logger.debug('Registering blueprints...')
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(evaluee.bp)
@@ -47,5 +55,10 @@ def create_app(config_name=None):
     app.register_blueprint(health_bp)
     app.register_blueprint(household)
     app.register_blueprint(pcpm_bp)
+    app.register_blueprint(fringe_benefits_bp)
+    app.logger.debug('Successfully registered fringe_benefits_bp')
+    
+    # Register commands
+    app.cli.add_command(init_ecec_data)
     
     return app 

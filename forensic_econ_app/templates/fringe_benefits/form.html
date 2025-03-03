@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Fringe Benefits Calculator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Fringe Benefits Calculator</h1>
+        <p class="lead">Calculate fringe benefits based on ECEC data and geographic adjustments.</p>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Create New Scenario</h5>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="scenario_name" class="form-label">Scenario Name</label>
+                        <input type="text" class="form-control" id="scenario_name" name="scenario_name" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="worker_type" class="form-label">Worker Type</label>
+                                <select class="form-select" id="worker_type" name="worker_type" required>
+                                    <option value="">Select Worker Type</option>
+                                    {% for value, label in worker_types %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="region" class="form-label">Geographic Region</label>
+                                <select class="form-select" id="region" name="region" required>
+                                    <option value="">Select Region</option>
+                                    {% for value, label in regions %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="annual_salary" class="form-label">Annual Salary ($)</label>
+                                <input type="number" step="0.01" class="form-control" id="annual_salary" name="annual_salary" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="inflation_rate" class="form-label">Inflation Rate (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="inflation_rate" name="inflation_rate" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="years_since_update" class="form-label">Years Since Update</label>
+                                <input type="number" step="1" class="form-control" id="years_since_update" name="years_since_update" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Create Scenario</button>
+                </form>
+            </div>
+        </div>
+        
+        {% if scenarios %}
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Existing Scenarios</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Worker Type</th>
+                                <th>Region</th>
+                                <th>Annual Salary</th>
+                                <th>Fringe %</th>
+                                <th>Fringe Value</th>
+                                <th>Total Comp.</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for scenario in scenarios %}
+                            <tr>
+                                <td>{{ scenario.scenario_name }}</td>
+                                <td>{{ scenario.worker_type }}</td>
+                                <td>{{ scenario.region }}</td>
+                                <td>{{ "${:,.2f}".format(scenario.annual_salary) }}</td>
+                                <td>{{ "%.2f%%"|format(scenario.adjusted_fringe_percentage) }}</td>
+                                <td>{{ "${:,.2f}".format(scenario.fringe_value) }}</td>
+                                <td>{{ "${:,.2f}".format(scenario.total_compensation) }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('fringe_benefits.view_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">View</a>
+                                        <form method="POST" action="{{ url_for('fringe_benefits.delete_scenario', evaluee_id=evaluee.id, scenario_id=scenario.id) }}"
+                                              style="display: inline;">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="return confirm('Are you sure you want to delete this scenario?')">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            No fringe benefit scenarios created yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

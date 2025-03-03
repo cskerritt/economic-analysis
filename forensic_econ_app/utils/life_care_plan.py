@@ -161,7 +161,11 @@ def generate_life_care_plan_table(
     fractional_part = (duration_years * periods_per_year) - total_periods
 
     if debug:
-        print(f"\nDEBUG: Periods setup:")
+        print(f"\nDEBUG: Life Care Plan Setup:")
+        print(f"Start Year: {start_year}")
+        print(f"Start Age: {start_age}")
+        print(f"Duration Years: {duration_years}")
+        print(f"End Age: {start_age + duration_years}")
         print(f"Periods per year: {periods_per_year}")
         print(f"Total periods: {total_periods}")
         print(f"Fractional part: {fractional_part}")
@@ -169,12 +173,25 @@ def generate_life_care_plan_table(
     period_tuples = []
     for p_idx in range(total_periods + 1):
         frac_yr = p_idx / float(periods_per_year)
-        period_tuples.append((p_idx, frac_yr))
+        current_age = start_age + frac_yr
+        if current_age <= (start_age + duration_years):
+            period_tuples.append((p_idx, frac_yr))
+            if debug and (p_idx == 0 or p_idx == total_periods):
+                print(f"\nDEBUG: Period {p_idx}:")
+                print(f"Year fraction: {frac_yr}")
+                print(f"Current age: {current_age}")
 
     if fractional_part > 1e-6:
         final_p_idx = total_periods + 1
         frac_yr = (total_periods + fractional_part) / float(periods_per_year)
-        period_tuples.append((final_p_idx, frac_yr))
+        current_age = start_age + frac_yr
+        if current_age <= (start_age + duration_years):
+            period_tuples.append((final_p_idx, frac_yr))
+            if debug:
+                print(f"\nDEBUG: Final fractional period:")
+                print(f"Period index: {final_p_idx}")
+                print(f"Year fraction: {frac_yr}")
+                print(f"Current age: {current_age}")
 
     rows = []
     item_totals_undiscounted = {it["name"]: 0.0 for it in items}
@@ -223,7 +240,22 @@ def generate_life_care_plan_table(
                     intervals_passed = (frac_yr - year_offset) / repeat_interval
                     if intervals_passed >= -1e-9:
                         if abs(intervals_passed - round(intervals_passed)) < 1e-5:
-                            applies = True
+                            # Check if we're within the duration period
+                            if "duration_years" in item:
+                                duration_years = item["duration_years"]
+                                cutoff_year = year_offset + duration_years
+                                applies = frac_yr < cutoff_year
+                                if debug:
+                                    print(f"\nDEBUG: Duration check for {name} at year {cal_year}:")
+                                    print(f"Current year fraction: {frac_yr}")
+                                    print(f"Year offset: {year_offset}")
+                                    print(f"Duration years: {duration_years}")
+                                    print(f"Cutoff year: {cutoff_year}")
+                                    print(f"Applies: {applies}")
+                            else:
+                                applies = True
+                                if debug:
+                                    print(f"\nDEBUG: No duration limit for {name} at year {cal_year}")
 
             if debug and p_idx == 0:
                 print(f"Applies in first period: {applies}")

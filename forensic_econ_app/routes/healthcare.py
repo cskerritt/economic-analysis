@@ -16,7 +16,7 @@ def compute_future_medical_costs(scenario):
     """Compute future medical costs based on scenario parameters."""
     print(f"DEBUG: Starting calculations for scenario {scenario.scenario_name}")
     
-    # Determine scenario growth rate
+    # Determine scenario growth rate (inflation rate)
     if scenario.growth_method == "CPI":
         scenario_growth_rate = CPIRate.get_rate("CPI") or Decimal('0.03')
     elif scenario.growth_method == "PCE":
@@ -52,6 +52,15 @@ def compute_future_medical_costs(scenario):
 
     print(f"DEBUG: Final discount rate: {net_discount}")
 
+    # Helper functions for inflation and discounting
+    def inflation_factor(year, inflation_rate):
+        """Return the inflation multiplier for a given year (base year = 1)."""
+        return (1 + inflation_rate) ** (year - 1)
+
+    def discount_factor(year, discount_rate):
+        """Return the discount multiplier for a given year (base year = 1)."""
+        return 1 / ((1 + discount_rate) ** (year - 1))
+
     # Create results dictionary with parameters
     results = {
         "parameters_used": {
@@ -64,128 +73,119 @@ def compute_future_medical_costs(scenario):
         },
         "items_breakdown": [],
         "grand_total_present_value": 0.0,
-        "grand_total_undiscounted": 0.0
+        "grand_total_undiscounted": 0.0,
+        "category_tables": {},
+        "category_summaries": []
     }
 
-    # Convert medical items to the format expected by life care plan calculator
-    items = []
-    for item in scenario.medical_items:
-        print(f"\nDEBUG: Processing item {item.label}")
-        print(f"DEBUG: Raw annual cost: {item.annual_cost}")
-        print(f"DEBUG: Raw growth rate: {item.growth_rate}")
-        print(f"DEBUG: Is one time: {item.is_one_time}")
-        print(f"DEBUG: Start year: {item.start_year}")
-        print(f"DEBUG: Duration years: {item.duration_years}")
-        
-        # Ensure all numeric values are properly converted to float
-        try:
-            annual_cost = float(item.annual_cost) if item.annual_cost is not None else 0.0
-            growth_rate = float(item.growth_rate) if item.growth_rate is not None else float(scenario_growth_rate)
-            start_year = int(item.start_year) if item.start_year is not None else 1
-            
-            print(f"DEBUG: Converted annual cost: {annual_cost}")
-            print(f"DEBUG: Converted growth rate: {growth_rate}")
-            print(f"DEBUG: Converted start year: {start_year}")
-            
-            item_dict = {
-                "name": item.label,
-                "base_cost": annual_cost,
-                "growth_rate": growth_rate,
-                "pattern": "once" if item.is_one_time else "recurring",
-                "year_offset": start_year - 1
-            }
-            
-            if item.duration_years:
-                item_dict["repeat_interval"] = 1.0
-                item_dict["pattern"] = "interval"
-            
-            print(f"DEBUG: Final item dict: {item_dict}")
-            items.append(item_dict)
-        except (ValueError, TypeError) as e:
-            print(f"DEBUG: Error processing item {item.label}: {str(e)}")
-            continue
-
     # Calculate start age
-    start_age = None
     if scenario.evaluee.date_of_birth:
         start_date = datetime.now()
-        start_age = float(
+        current_age = float(
             (start_date.year - scenario.evaluee.date_of_birth.year) +
             ((start_date.month - scenario.evaluee.date_of_birth.month) / 12.0) +
             ((start_date.day - scenario.evaluee.date_of_birth.day) / 365.25)
         )
-    
-    print(f"DEBUG: Start age: {start_age}")
+    else:
+        current_age = 60.39  # Default starting age if no DOB
 
-    # Generate the life care plan table
-    df = generate_life_care_plan_table(
-        category_name=scenario.scenario_name,
-        start_year=datetime.now().year,
-        start_age=start_age or 0.0,
-        duration_years=float(projection_years),
-        items=items,
-        annual_discount_rate=float(net_discount),
-        discounting_enabled=discounting_enabled,
-        frequency="annual"
-    )
+    current_year = datetime.now().year
+    detailed_rows = []
 
-    print("\nDEBUG: Generated DataFrame head:")
-    print(df.head())
-    print("\nDEBUG: Generated DataFrame tail:")
-    print(df.tail())
-
-    # Process each item's breakdown
-    for item in items:
-        item_name = item["name"]
-        yearly_details = []
-        
-        print(f"\nDEBUG: Processing results for item {item_name}")
-        
-        # Get the rows before the summary rows
-        data_rows = df[df['Age'] != f"{item_name} TOTAL"].copy()
-        data_rows = data_rows[pd.to_numeric(data_rows['Age'], errors='coerce').notna()]
-        
-        for _, row in data_rows.iterrows():
-            if isinstance(row['Age'], str):
-                continue
-            
-            try:
-                year_detail = {
-                    "year": int(row['Calendar Year']),
-                    "projected_cost": float(row[f"{item_name} (Undiscounted)"]),
-                    "present_value": float(row[f"{item_name} (Discounted)"]) if discounting_enabled else float(row[f"{item_name} (Undiscounted)"])
-                }
-                print(f"DEBUG: Year detail: {year_detail}")
-                yearly_details.append(year_detail)
-            except (ValueError, TypeError) as e:
-                print(f"DEBUG: Error processing row for {item_name}: {str(e)}")
-                continue
+    # Process each medical item
+    for item in scenario.medical_items:
+        print(f"\nDEBUG: Processing item {item.label}")
         
         try:
-            # Get the item's total from the summary row
-            total_row = df[df['Age'] == f"{item_name} TOTAL"].iloc[0]
-            undiscounted_total = float(total_row[f"{item_name} (Undiscounted)"].replace(",", ""))
-            discounted_total = float(total_row[f"{item_name} (Discounted)"].replace(",", "")) if discounting_enabled else undiscounted_total
-            print(f"DEBUG: Item total - Undiscounted: {undiscounted_total}, Discounted: {discounted_total}")
-            
-            results["items_breakdown"].append({
-                "label": item_name,
-                "yearly_details": yearly_details,
-                "item_present_value_sum": discounted_total,
-                "item_undiscounted_sum": undiscounted_total
-            })
-        except (ValueError, TypeError, IndexError) as e:
-            print(f"DEBUG: Error processing total for {item_name}: {str(e)}")
+            annual_cost = float(item.annual_cost) if item.annual_cost is not None else 0.0
+            growth_rate = float(item.growth_rate) if item.growth_rate is not None else float(scenario_growth_rate)
+            duration_years = int(item.duration_years) if item.duration_years else projection_years
+            start_year = int(item.start_year) if item.start_year is not None else 1
+            interval_years = int(item.interval_years) if item.interval_years is not None else 1
+
+            # Calculate yearly projections
+            for year in range(start_year, min(start_year + duration_years, projection_years + 1)):
+                # Skip years that don't match the interval
+                if (year - start_year) % interval_years != 0:
+                    continue
+
+                if item.is_one_time and year > start_year:
+                    continue
+
+                inf_factor = inflation_factor(year, growth_rate)
+                infl_annual_cost = annual_cost * inf_factor
+                disc_factor = discount_factor(year, float(net_discount))
+                present_val = infl_annual_cost * disc_factor if discounting_enabled else infl_annual_cost
+                proj_age = current_age + (year - 1)
+                proj_year = current_year + (year - 1)
+
+                detailed_rows.append({
+                    "Category": item.category or "Uncategorized",
+                    "Service": item.label,
+                    "Projection_Year": proj_year,
+                    "Age": round(proj_age, 1),
+                    "Inflation_Adjusted_Annual_Cost": infl_annual_cost,
+                    "Present_Value": present_val
+                })
+
+        except (ValueError, TypeError) as e:
+            print(f"DEBUG: Error processing item {item.label}: {str(e)}")
             continue
 
-    # Get the grand total from the final row
-    try:
-        grand_total_row = df[df['Age'] == "Grand TOTAL"].iloc[0]
-        results["grand_total_undiscounted"] = float(grand_total_row["Total (Undiscounted)"].replace(",", ""))
-        results["grand_total_present_value"] = float(grand_total_row["Total (Discounted)"].replace(",", "")) if discounting_enabled else results["grand_total_undiscounted"]
-        print(f"\nDEBUG: Grand totals - Undiscounted: {results['grand_total_undiscounted']}, Discounted: {results['grand_total_present_value']}")
-    except (ValueError, TypeError, IndexError) as e:
-        print(f"DEBUG: Error processing grand total: {str(e)}")
+    # Convert to DataFrame for analysis
+    detailed_df = pd.DataFrame(detailed_rows)
+
+    # Create pivot tables for each category
+    if not detailed_df.empty:
+        for cat in detailed_df["Category"].unique():
+            cat_df = detailed_df[detailed_df["Category"] == cat]
+            
+            # Pivot for future values
+            pivot_future = cat_df.pivot_table(
+                index="Projection_Year", 
+                columns="Service",
+                values="Inflation_Adjusted_Annual_Cost"
+            )
+            
+            # Insert Age column
+            age_series = cat_df.groupby("Projection_Year")["Age"].first()
+            pivot_future.insert(0, "Age", age_series)
+            
+            # Add Total Future Value column
+            pivot_future["Total Future Value"] = pivot_future.drop(columns="Age").sum(axis=1)
+            
+            # Add Total Present Value column
+            present_totals = cat_df.groupby("Projection_Year")["Present_Value"].sum()
+            pivot_future["Total Present Value"] = present_totals
+            
+            # Convert index to string and sort
+            pivot_future.index = pivot_future.index.map(str)
+            pivot_future.sort_index(inplace=True)
+            
+            # Compute and append totals row
+            totals = pivot_future.drop(columns="Age").sum()
+            totals["Age"] = "—"
+            pivot_future.loc["Total"] = totals
+            
+            results["category_tables"][cat] = pivot_future.to_dict()
+
+        # Create overall summary by category
+        overall_summary = detailed_df.groupby("Category").agg({
+            "Inflation_Adjusted_Annual_Cost": "sum",
+            "Present_Value": "sum"
+        }).reset_index()
+        
+        overall_summary.rename(columns={
+            "Inflation_Adjusted_Annual_Cost": "Total Future Value",
+            "Present_Value": "Total Present Value"
+        }, inplace=True)
+        
+        # Add grand totals
+        results["grand_total_undiscounted"] = float(overall_summary["Total Future Value"].sum())
+        results["grand_total_present_value"] = float(overall_summary["Total Present Value"].sum())
+        
+        # Store category summaries
+        results["category_summaries"] = overall_summary.to_dict(orient="records")
 
     results["notes"] = (
         "Computed using Eric Christensen's 2022 methodology for life care plan calculations. "
@@ -323,8 +323,10 @@ def add_item(evaluee_id, scenario_id):
     
     # Get form data
     label = request.form.get('label')
+    category = request.form.get('category', 'Uncategorized')
     annual_cost = request.form.get('annual_cost', type=float)
     is_one_time = request.form.get('is_one_time') == 'on'
+    interval_years = request.form.get('interval_years', type=int, default=1)
     
     # Get growth rate (convert from percentage to decimal)
     growth_rate_str = request.form.get('growth_rate')
@@ -359,9 +361,14 @@ def add_item(evaluee_id, scenario_id):
         flash('Duration must be 1 year or greater.', 'danger')
         return redirect(url_for('healthcare.manage_items', evaluee_id=evaluee_id, scenario_id=scenario_id))
     
+    if interval_years is not None and interval_years < 1:
+        flash('Interval must be 1 year or greater.', 'danger')
+        return redirect(url_for('healthcare.manage_items', evaluee_id=evaluee_id, scenario_id=scenario_id))
+    
     # Create new medical item
     item = MedicalItem(
         label=label,
+        category=category,
         annual_cost=annual_cost,
         is_one_time=is_one_time,
         growth_rate=growth_rate,
@@ -369,6 +376,7 @@ def add_item(evaluee_id, scenario_id):
         age_through=age_through,
         start_year=start_year or 1,  # Default to 1 if not specified
         duration_years=duration_years,
+        interval_years=interval_years,
         scenario_id=scenario_id
     )
     
@@ -418,7 +426,15 @@ def duplicate_scenario(evaluee_id, scenario_id):
         new_item = MedicalItem(
             scenario_id=new_scenario.id,
             label=item.label,
-            annual_cost=item.annual_cost
+            category=item.category,
+            annual_cost=item.annual_cost,
+            is_one_time=item.is_one_time,
+            growth_rate=item.growth_rate,
+            age_initiated=item.age_initiated,
+            age_through=item.age_through,
+            start_year=item.start_year,
+            duration_years=item.duration_years,
+            interval_years=item.interval_years
         )
         db.session.add(new_item)
     
@@ -458,53 +474,6 @@ def export_scenario(evaluee_id, scenario_id):
     results = compute_future_medical_costs(scenario)
     current_year = datetime.now().year
     
-    # Generate the life care plan table
-    # Calculate start age
-    start_age = None
-    if evaluee.date_of_birth:
-        start_date = datetime.now()
-        start_age = float(
-            (start_date.year - evaluee.date_of_birth.year) +
-            ((start_date.month - evaluee.date_of_birth.month) / 12.0) +
-            ((start_date.day - evaluee.date_of_birth.day) / 365.25)
-        )
-    
-    # Convert medical items to the format expected by life care plan calculator
-    items = []
-    for item in scenario.medical_items:
-        try:
-            annual_cost = float(item.annual_cost) if item.annual_cost is not None else 0.0
-            growth_rate = float(item.growth_rate) if item.growth_rate is not None else float(results['parameters_used']['growth_rate_effective'])
-            start_year = int(item.start_year) if item.start_year is not None else 1
-            
-            item_dict = {
-                "name": item.label,
-                "base_cost": annual_cost,
-                "growth_rate": growth_rate,
-                "pattern": "once" if item.is_one_time else "recurring",
-                "year_offset": start_year - 1
-            }
-            
-            if item.duration_years:
-                item_dict["repeat_interval"] = 1.0
-                item_dict["pattern"] = "interval"
-            
-            items.append(item_dict)
-        except (ValueError, TypeError) as e:
-            continue
-    
-    # Generate the life care plan table
-    df = generate_life_care_plan_table(
-        category_name=scenario.scenario_name,
-        start_year=datetime.now().year,
-        start_age=start_age or 0.0,
-        duration_years=float(scenario.projection_years),
-        items=items,
-        annual_discount_rate=float(results['parameters_used']['discount_rate_effective']),
-        discounting_enabled=True,
-        frequency="annual"
-    )
-    
     # Create a temporary file
     with NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
         writer = pd.ExcelWriter(tmp.name, engine='openpyxl')
@@ -533,117 +502,150 @@ def export_scenario(evaluee_id, scenario_id):
             ]
         }
         pd.DataFrame(params_data).to_excel(writer, sheet_name='Parameters', index=False)
-        
-        # Create yearly breakdown data in the example format
-        yearly_data = []
-        
-        # Add header rows with initial parameters
-        header_data = {
-            'Year': '',
-            'Age': '2025 Cost:',
-        }
-        duration_data = {
-            'Year': '',
-            'Age': 'Duration (Years)',
-        }
-        growth_data = {
-            'Year': '',
-            'Age': 'Growth Rate:',
-        }
-        discount_data = {
-            'Year': '',
-            'Age': 'Discount Rate:',
-        }
-        
-        # Add columns for each medical item and total
-        for item in scenario.medical_items:
-            header_data[item.label] = f"${float(item.annual_cost):,.2f}"
-            duration_data[item.label] = f"{item.duration_years or 1.00:.2f}"
-            growth_data[item.label] = f"{float(item.growth_rate * 100 if item.growth_rate is not None else results['parameters_used']['growth_rate_effective']):.2f}%"
-        
-        # Add discount rate row
-        discount_rate_str = f"{float(results['parameters_used']['discount_rate_effective'] * 100):.2f}%"
-        for item in scenario.medical_items:
-            discount_data[item.label] = discount_rate_str
-        
-        yearly_data.append(header_data)
-        yearly_data.append(duration_data)
-        yearly_data.append(growth_data)
-        yearly_data.append(discount_data)
-        
-        # Get the data rows before any summary rows
-        data_rows = df[df['Age'].apply(lambda x: not isinstance(x, str) or x.replace('.', '').isdigit())].copy()
-        
-        # Add year-by-year breakdown
-        for _, row in data_rows.iterrows():
-            year_data = {
-                'Year': int(row['Calendar Year']),
-                'Age': f"{float(row['Age']):.2f}"
-            }
+
+        # Create category sheets with vertical layout
+        for category, table in results['category_tables'].items():
+            # Convert the table data to a list format
+            data_rows = []
             
-            total_cost = 0
-            total_pv = 0
-            # Add data for each medical item
-            for item in scenario.medical_items:
-                cost = float(row[f"{item.label} (Undiscounted)"])
-                pv = float(row[f"{item.label} (Discounted)"])
-                year_data[item.label] = f"${cost:,.2f}"
-                total_cost += cost
-                total_pv += pv
+            # Add header rows
+            data_rows.append(['', '2025 Cost:'])  # First row with initial costs
+            data_rows.append(['', 'Duration (Years)'])  # Duration row
+            data_rows.append(['', 'Growth Rate:'])  # Growth rate row
+            data_rows.append(['', 'Discount Rate:'])  # Discount rate row
+            data_rows.append(['', 'Interval (Years):'])  # Interval row
             
-            year_data['Total Cost'] = f"${total_cost:,.2f}"
-            year_data['Present Value'] = f"${total_pv:,.2f}"
-            yearly_data.append(year_data)
+            # Get all years (excluding 'Total' row)
+            years = [year for year in table['Age'].keys() if year != 'Total']
+            
+            # Get all services (excluding Age, Total Future Value, and Total Present Value)
+            services = [col for col in table.keys() 
+                       if col not in ['Age', 'Total Future Value', 'Total Present Value']]
+            
+            # Add column headers
+            headers = ['Year', 'Age'] + services + ['Total Future Value', 'Total Present Value']
+            
+            # Fill in the initial rows
+            for service in services:
+                # Add service column to cost row
+                data_rows[0].append(f"${table[service]['Total']:,.2f}")
+                
+                # Add duration
+                service_item = next((item for item in scenario.medical_items if item.label == service), None)
+                data_rows[1].append(f"{service_item.duration_years or 1:.2f}" if service_item else "1.00")
+                
+                # Add growth rate
+                growth_rate = service_item.growth_rate if service_item and service_item.growth_rate is not None \
+                    else results['parameters_used']['growth_rate_effective']
+                data_rows[2].append(f"{float(growth_rate * 100):.2f}%")
+                
+                # Add discount rate
+                data_rows[3].append(f"{float(results['parameters_used']['discount_rate_effective'] * 100):.2f}%")
+                
+                # Add interval
+                data_rows[4].append(f"Every {service_item.interval_years} year{'s' if service_item.interval_years != 1 else ''}" if service_item else "Annual")
+            
+            # Add totals columns to header rows
+            for _ in range(2):  # Add empty cells for Total Future Value and Total Present Value
+                data_rows[0].append('')
+                data_rows[1].append('')
+                data_rows[2].append('')
+                data_rows[3].append('')
+                data_rows[4].append('')
+            
+            # Add year-by-year data
+            for year in sorted(years):
+                row = [year]  # Start with the year
+                row.append(table['Age'][year])  # Add age
+                
+                # Add service values
+                for service in services:
+                    row.append(f"${table[service][year]:,.2f}" if table[service][year] else "$0.00")
+                
+                # Add totals
+                row.append(f"${table['Total Future Value'][year]:,.2f}")
+                row.append(f"${table['Total Present Value'][year]:,.2f}")
+                data_rows.append(row)
+            
+            # Add total row
+            total_row = ['', 'Total:']
+            for service in services:
+                total_row.append(f"${table[service]['Total']:,.2f}")
+            total_row.append(f"${table['Total Future Value']['Total']:,.2f}")
+            total_row.append(f"${table['Total Present Value']['Total']:,.2f}")
+            data_rows.append(total_row)
+            
+            # Create DataFrame and write to Excel
+            df = pd.DataFrame(data_rows[1:], columns=headers)  # Skip the first row as it's our header
+            df.to_excel(writer, sheet_name=category, index=False)
+            
+            # Format the worksheet
+            worksheet = writer.sheets[category]
+            
+            # Set column widths
+            for col_idx, col_name in enumerate(headers):
+                col_letter = get_column_letter(col_idx + 1)
+                worksheet.column_dimensions[col_letter].width = 20
+            
+            # Add borders and formatting
+            from openpyxl.styles import Border, Side, Alignment, Font
+            
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            # Apply borders and center alignment to all cells
+            for row in worksheet.iter_rows(min_row=1, max_row=worksheet.max_row):
+                for cell in row:
+                    cell.border = thin_border
+                    cell.alignment = Alignment(horizontal='center')
+            
+            # Make headers and first column bold
+            for row in worksheet[1:6]:  # First 5 rows (parameters including interval)
+                for cell in row:
+                    cell.font = Font(bold=True)
+            
+            # Make the total row bold
+            for cell in worksheet[worksheet.max_row]:
+                cell.font = Font(bold=True)
         
-        # Add final total row
-        total_row = {
-            'Year': '',
-            'Age': 'Total:',
-        }
+        # Overall Summary sheet
+        summary_df = pd.DataFrame(results['category_summaries'])
+        summary_df.to_excel(writer, sheet_name='Overall Summary', index=False)
         
-        # Add item totals
-        for item in scenario.medical_items:
-            item_total = float(df[df['Age'] == f"{item.label} TOTAL"].iloc[0][f"{item.label} (Undiscounted)"].replace(',', ''))
-            total_row[item.label] = f"${item_total:,.2f}"
-        
-        # Add grand totals
-        grand_total_row = df[df['Age'] == "Grand TOTAL"].iloc[0]
-        total_row['Total Cost'] = f"${float(grand_total_row['Total (Undiscounted)'].replace(',', '')):,.2f}"
-        total_row['Present Value'] = f"${float(grand_total_row['Total (Discounted)'].replace(',', '')):,.2f}"
-        yearly_data.append(total_row)
-        
-        # Create DataFrame and write to Excel
-        yearly_df = pd.DataFrame(yearly_data)
-        yearly_df.to_excel(writer, sheet_name=scenario.scenario_name, index=False)
-        
-        # Format the worksheet
-        worksheet = writer.sheets[scenario.scenario_name]
+        # Format the summary worksheet
+        worksheet = writer.sheets['Overall Summary']
         
         # Set column widths
-        for col_idx, col_name in enumerate(yearly_df.columns):
+        for col_idx, col_name in enumerate(summary_df.columns):
             col_letter = get_column_letter(col_idx + 1)
-            worksheet.column_dimensions[col_letter].width = 15
+            worksheet.column_dimensions[col_letter].width = 20
         
         # Add borders and formatting
-        from openpyxl.styles import Border, Side, Alignment, Font
-        
-        thin_border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
-        )
-        
-        # Apply borders and center alignment to all cells
         for row in worksheet.iter_rows(min_row=1, max_row=worksheet.max_row):
             for cell in row:
                 cell.border = thin_border
                 cell.alignment = Alignment(horizontal='center')
         
         # Make headers bold
-        for row in range(1, 5):  # Now including discount rate row
-            for cell in worksheet[row]:
-                cell.font = Font(bold=True)
+        for cell in worksheet[1]:
+            cell.font = Font(bold=True)
+        
+        # Add grand total row
+        grand_total_row = worksheet.max_row + 2
+        worksheet.cell(row=grand_total_row, column=1, value='Grand Total')
+        worksheet.cell(row=grand_total_row, column=2, value=results['grand_total_undiscounted'])
+        worksheet.cell(row=grand_total_row, column=3, value=results['grand_total_present_value'])
+        
+        # Format grand total row
+        for col in range(1, 4):
+            cell = worksheet.cell(row=grand_total_row, column=col)
+            cell.font = Font(bold=True)
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal='center')
         
         writer.close()
         

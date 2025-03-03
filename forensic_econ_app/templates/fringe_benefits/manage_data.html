@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Manage ECEC Data{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Manage ECEC Data</h1>
+        <p class="lead">Update worker type and geographic region data for fringe benefit calculations.</p>
+        
+        <!-- Worker Types -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Worker Types</h5>
+                
+                <!-- Add Worker Type Form -->
+                <form method="POST" class="mb-4">
+                    <input type="hidden" name="action" value="add_worker_type">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="worker_type" class="form-label">Worker Type</label>
+                                <input type="text" class="form-control" id="worker_type" name="worker_type" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="wages_and_salaries" class="form-label">Wages & Salaries ($/hr)</label>
+                                <input type="number" step="0.01" class="form-control" id="wages_and_salaries" name="wages_and_salaries" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="total_benefits" class="form-label">Total Benefits ($/hr)</label>
+                                <input type="number" step="0.01" class="form-control" id="total_benefits" name="total_benefits" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="legally_required_benefits" class="form-label">Legally Required Benefits (%)</label>
+                                <input type="number" step="0.01" class="form-control" id="legally_required_benefits" name="legally_required_benefits" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Worker Type</button>
+                </form>
+                
+                <!-- Worker Types Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Worker Type</th>
+                                <th>Wages & Salaries ($/hr)</th>
+                                <th>Total Benefits ($/hr)</th>
+                                <th>Legally Required Benefits (%)</th>
+                                <th>Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for wt in worker_types %}
+                            <tr>
+                                <td>{{ wt.worker_type }}</td>
+                                <td>{{ "${:,.2f}".format(wt.wages_and_salaries) }}</td>
+                                <td>{{ "${:,.2f}".format(wt.total_benefits) }}</td>
+                                <td>{{ "%.2f%%"|format(wt.legally_required_benefits) }}</td>
+                                <td>{{ wt.updated_at.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Geographic Regions -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Geographic Regions</h5>
+                
+                <!-- Add Region Form -->
+                <form method="POST" class="mb-4">
+                    <input type="hidden" name="action" value="add_region">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="region" class="form-label">Region</label>
+                                <input type="text" class="form-control" id="region" name="region" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="wages_and_salaries" class="form-label">Wages & Salaries ($/hr)</label>
+                                <input type="number" step="0.01" class="form-control" id="wages_and_salaries" name="wages_and_salaries" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="total_benefits" class="form-label">Total Benefits ($/hr)</label>
+                                <input type="number" step="0.01" class="form-control" id="total_benefits" name="total_benefits" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Region</button>
+                </form>
+                
+                <!-- Regions Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Wages & Salaries ($/hr)</th>
+                                <th>Total Benefits ($/hr)</th>
+                                <th>Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for region in regions %}
+                            <tr>
+                                <td>{{ region.region }}</td>
+                                <td>{{ "${:,.2f}".format(region.wages_and_salaries) }}</td>
+                                <td>{{ "${:,.2f}".format(region.total_benefits) }}</td>
+                                <td>{{ region.updated_at.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
